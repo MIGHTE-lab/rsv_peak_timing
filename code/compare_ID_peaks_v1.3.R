@@ -13,7 +13,7 @@
 ## Version: 1.3
 ## -----------------------------------------------------------------------------
 
-## 1. Load packages ------------------------------------------------------------
+## 1. Load packages and data ---------------------------------------------------
 ## Data management
 library(tidyverse)
 library(zoo)
@@ -31,28 +31,24 @@ library(penalized)
 library(caret)
 
 ## Set working directory
-setwd("~/Google Drive/My Drive/EWS_GW_BP_LC_RG")
-
-## 2. Load data ----------------------------------------------------------------
-## Analysis 1: Compare peak RSV to peak ILI for 2016-now
-## Analysis 2: Show the comparison between ILI/RSV/COVID
+setwd("~/Documents/Projects/rsv_peak_timing")
 
 ## Load RSVnet data
-rsvnet = read_csv("data/ground_truth/RSV/RSV-NET_data/rsv_hosps_010825.csv")
+rsvnet = read_csv("data/RSV/RSV-NET_data/rsv_hosps_010825.csv")
 
-## NSSP (RSV) data
-nssp_data = read_csv("data/ground_truth/RSV/NSSP/NSSP_Combined_07-05-24.csv")
+## NSSP (RSV) data -- for this version, unused.
+# nssp_data = read_csv("data/ground_truth/RSV/NSSP/NSSP_Combined_07-05-24.csv")
 
 ## ILI data - need data from 21 - 23
-ili_data = read_csv("data/ground_truth/ILInet/ILINet_state_2024-11-30.csv", na = "X",
+ili_data = read_csv("data/ILInet/ILINet_state_2024-11-30.csv", na = "X",
                     skip = 1)
 
 ## FluSurv Hospitalization data
-flu_data = read_csv("data/ground_truth/FluSURV/fluSurv_RSVNET_16_24.csv",
+flu_data = read_csv("data/FluSURV/fluSurv_RSVNET_16_24.csv",
                     na = "null", skip = 2, n_max = 99866)
 
 ## COVID data - data limited by available dates
-covid_data = read_csv("data/ground_truth/COVID/COVID_aggregated.csv")
+covid_data = read_csv("data/COVID/COVID_aggregated.csv")
 
 ## 2. Data cleaning ------------------------------------------------------------
 
@@ -69,6 +65,7 @@ names(ili_data) = c("region_type", "region", "year", "epiweek", "weighted_ili",
 names(flu_data) = c("state", "network", "season", "year", "epiweek", "age_cat",
                     "sex_cat", "race_cat", "virus", "cum_rate", "weekly_rate",
                     "age_adj_cum_rate", "age_adj_weekly_rate")
+
 ## Unify the date format and start from the same week
 ##
 ## Based on evaluation of the dataset start, dates are listed in two formats:
@@ -113,6 +110,12 @@ rsvnet_adults %>% filter(week_end == as_date("2022-12-17"))
 # Create the figure 1 dataset by merging ILI with RSV
 rsv_ili = rsvnet_adults %>%
   left_join(ili_data_with_dates, by = c("state", "week_end"))
+
+# Now fix the COVID data because we need it for 19-22
+
+covid_data = covid_data %>%
+  mutate(week_end = MMWRweek2Date(year, epiweek) + 6) %>%
+  select(week_end, epiweek, year, cases, geography)
 
 # We also need flu-speciifc data from FluSurv for all data, unify the categories
 # do it for all adults (age >= 18, all genders, all races
@@ -160,17 +163,15 @@ rsvnet_states = c("Utah", "Tennessee", "Oregon", "New Mexico", "Minnesota",
                   "Colorado", "California")
 
 # We want to replicate the penalized regression process that we used before but
-#for each year
+# for each year
 
 # What happens if we do the regression for all years and not just 1?
 # It appears yearly modeling looks better
-library(glmnet)
-library(penalized)
-library(caret)
 
-# Now run the model for each state and generate a combined figure
+# Make sure all NA values (from off-season times or other data artifacts) are 0
 ili_flu_rsv[is.na(ili_flu_rsv) == TRUE] = 0
 
+# Add a season indicator
 ili_flu_rsv = ili_flu_rsv %>% mutate(
     season = case_when(
       week_end >= as.Date(paste0(format(week_end, "%Y"), "-06-01")) &
@@ -180,17 +181,19 @@ ili_flu_rsv = ili_flu_rsv %>% mutate(
       TRUE ~ NA_character_
     ))
 
-ili_flu_rsv = ili_flu_rsv %>% mutate(season = ifelse(week_end == as_date("2018-03-31") & is.na(season) == TRUE, "17-18", season))
+# Some additional data processing
+ili_flu_rsv = ili_flu_rsv %>%
+  mutate(season = ifelse(week_end == as_date("2018-03-31") & is.na(season) == TRUE, "17-18", season))
 
 ili_flu_rsv = ili_flu_rsv %>% filter(state %in% rsvnet_states)
 
 ili_flu_rsv = ili_flu_rsv %>% mutate(season = ifelse(season == "NA-20", "19-20", season))
 
-ili_flu_rsv %>% distinct(season)
-
 seasons = c("16-17", "17-18", "18-19", "19-20", "20-21", "21-22", "22-23", "23-24")
 
+# 3. Modeling and data aggregation ---------------------------------------------
 
+# 2016-2017 season
 signals_with_betas_16_17 = NULL
 for(geo in ili_flu_rsv %>% filter(season == "16-17") %>% distinct(state) %>% pull()){
 
@@ -227,7 +230,9 @@ for(geo in ili_flu_rsv %>% filter(season == "16-17") %>% distinct(state) %>% pul
 signals_with_betas_16_17
 # Generate the plot year by year - maybe the ordering is not that consistent
 
-# We have 8 total seasons -
+# The criteria we are looking for is: RSV's MAX VALUE occurs before Flu's max value
+# The volume of intensity will be lower for RSV since the overall percentages are
+# lower across the board.
 
 # 2016-2017 - RSV first in 2/5 state-seasons, flu and RSV synchronous in 3/5 states
 signals_with_betas_16_17  %>%
@@ -248,12 +253,12 @@ signals_with_betas_16_17  %>%
         legend.title = element_blank(),
         legend.position = 'right')
 
-# 2017-2018
-signals_with_betas_16_17 = NULL
-for(geo in ili_flu_rsv %>% filter(season == "16-17") %>% distinct(state) %>% pull()){
+# 2017-2018 season
+signals_with_betas_17_18 = NULL
+for(geo in ili_flu_rsv %>% filter(season == "17-18") %>% distinct(state) %>% pull()){
 
   # Filter the data to only include data from the selected state and season
-  data = ili_flu_rsv %>% filter(state == geo, season == "16-17") %>%
+  data = ili_flu_rsv %>% filter(state == geo, season == "17-18") %>%
     mutate(ili_rescaled = ili/max(ili),
            flu_rescaled = flu/max(flu),
            rsv_rescaled = rsv/max(rsv))
@@ -279,14 +284,10 @@ for(geo in ili_flu_rsv %>% filter(season == "16-17") %>% distinct(state) %>% pul
            flu_times_coef = flu*beta_flu,
            rsv_times_coef = rsv*beta_rsv)
 
-  signals_with_betas_16_17 = bind_rows(signals_with_betas_16_17, signals_tmp)
+  signals_with_betas_17_18 = bind_rows(signals_with_betas_17_18, signals_tmp)
 
 }
-signals_with_betas_16_17
-
-
-signals_with_betas  %>%
-  filter(week_end > as_date("2017-6-01") & week_end <= as_date("2018-05-01")) %>%
+signals_with_betas_17_18  %>%
   ggplot(aes(x = week_end)) +
   geom_line(aes(y = flu_times_coef, color = 'Flu'), linewidth = 0.65) +
   geom_line(aes(y = rsv_times_coef, color = 'RSV'), linewidth = 0.65) +
@@ -303,15 +304,237 @@ signals_with_betas  %>%
         axis.text.y = element_blank(),
         legend.title = element_blank(),
         legend.position = 'right')
+# RSV first in 1/6
+# Flu first in 3/6
+# Synchronous in 2/6
 
-# Steps for tomorrow
-# 1. Check the models
-# 2. Evaluate how many state-seasons have RSV first (and how many have flu first)
-# 3. Consider adding COVID for the COVID years - maybe too much?
+# 2018-2019 season
+signals_with_betas_18_19 = NULL
+for(geo in ili_flu_rsv %>% filter(season == "18-19") %>% distinct(state) %>% pull()){
+
+  # Filter the data to only include data from the selected state and season
+  data = ili_flu_rsv %>% filter(state == geo, season == "18-19") %>%
+    mutate(ili_rescaled = ili/max(ili),
+           flu_rescaled = flu/max(flu),
+           rsv_rescaled = rsv/max(rsv))
+
+  # Use 10-fold CV to identify best lambda
+  cv = cv.glmnet(x = data.matrix(data[,c('flu', 'rsv')]),
+                 y = data.matrix(data[,'ili']),
+                 intercept = FALSE, alpha = 0)
+
+  # Use penalized package to run the ridge w/ no intercept + non-negative
+  # and the specified lambda from the CV model
+  fit = penalized(ili ~ flu + rsv ,
+                  positive = TRUE,
+                  unpenalized = ~0,
+                  data = data,
+                  lambda2 = cv$lambda.min)
+
+  coefs_tmp = coefficients(fit)
+
+  signals_tmp = data %>%
+    mutate(beta_flu = coefs_tmp[1],
+           beta_rsv = coefs_tmp[2],
+           flu_times_coef = flu*beta_flu,
+           rsv_times_coef = rsv*beta_rsv)
+
+  signals_with_betas_18_19 = bind_rows(signals_with_betas_18_19, signals_tmp)
+
+}
+signals_with_betas_18_19  %>%
+  ggplot(aes(x = week_end)) +
+  geom_line(aes(y = flu_times_coef, color = 'Flu'), linewidth = 0.65) +
+  geom_line(aes(y = rsv_times_coef, color = 'RSV'), linewidth = 0.65) +
+  geom_line(aes(y = ili, color = 'ILI'), linewidth = 0.65) +
+  facet_wrap(~state, scales = 'free', ncol = 5) +
+  scale_color_manual(values = c('ILI' = 'grey',
+                                'RSV' = 'dodgerblue4',
+                                'Flu' = 'darkred')) +
+  labs(x = '', y = '') +
+  envalysis::theme_publish() +
+  theme(axis.text.x = element_text(size = 5),
+        axis.ticks.x = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.text.y = element_blank(),
+        legend.title = element_blank(),
+        legend.position = 'right')
+# Flu first in 4/10
+# RSV first in 6/10
+
+# 2019-2020 season
+
+# Starting here, we should merge in the COVID data
+ili_flu_rsv_19_20 = ili_flu_rsv %>% filter(season == "19-20")
+
+ili_flu_rsv_covid = ili_flu_rsv %>% left_join(covid_data, by = c("week_end", "state" = "geography")) %>%
+  select(state, week_end, rsv, ili, flu, season, cases) %>%
+  rename(covid = cases)
+
+# Zero out NAs (meaning either COVID data was not collected or no COVID was present)
+ili_flu_rsv_covid[is.na(ili_flu_rsv_covid) == TRUE] = 0
+
+# We have COVID data for 5 seasons (but not for every state)
+
+# I think the plan of action should be to use COVID data whenever possible
+
+signals_with_betas_19_20 = NULL
+for(geo in ili_flu_rsv_covid %>% filter(season == "19-20") %>% distinct(state) %>% pull()){
+
+  # Filter the data to only include data from the selected state and season
+  data = ili_flu_rsv_covid %>% filter(state == geo, season == "19-20") %>%
+    mutate(ili_rescaled = ili/max(ili),
+           flu_rescaled = flu/max(flu),
+           rsv_rescaled = rsv/max(rsv),
+           covid_rescaled = covid/max(covid))
+
+  # Use 10-fold CV to identify best lambda
+  cv = cv.glmnet(x = data.matrix(data[,c('flu', 'rsv', 'covid')]),
+                 y = data.matrix(data[,'ili']),
+                 intercept = FALSE, alpha = 0)
+
+  # Use penalized package to run the ridge w/ no intercept + non-negative
+  # and the specified lambda from the CV model
+  fit = penalized(ili ~ flu + rsv + covid,
+                  positive = TRUE,
+                  unpenalized = ~0,
+                  data = data,
+                  lambda2 = cv$lambda.min)
+
+  coefs_tmp = coefficients(fit)
+
+  signals_tmp = data %>%
+    mutate(beta_flu = coefs_tmp[1],
+           beta_rsv = coefs_tmp[2],
+           flu_times_coef = flu*beta_flu,
+           rsv_times_coef = rsv*beta_rsv)
+
+  signals_with_betas_19_20 = bind_rows(signals_with_betas_19_20, signals_tmp)
+
+}
+signals_with_betas_19_20  %>%
+  ggplot(aes(x = week_end)) +
+  geom_line(aes(y = flu_times_coef, color = 'Flu'), linewidth = 0.65) +
+  geom_line(aes(y = rsv_times_coef, color = 'RSV'), linewidth = 0.65) +
+  geom_line(aes(y = ili, color = 'ILI'), linewidth = 0.65) +
+  facet_wrap(~state, scales = 'free', ncol = 5) +
+  scale_color_manual(values = c('ILI' = 'grey',
+                                'RSV' = 'dodgerblue4',
+                                'Flu' = 'darkred')) +
+  labs(x = '', y = '') +
+  envalysis::theme_publish() +
+  theme(axis.text.x = element_text(size = 5),
+        axis.ticks.x = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.text.y = element_blank(),
+        legend.title = element_blank(),
+        legend.position = 'right')
+# RSV in 5/10
+
+# 2019-2020 season
+signals_with_betas_20_21 = NULL
+for(geo in ili_flu_rsv %>% filter(season == "20-21") %>% distinct(state) %>% pull()){
+
+  # Filter the data to only include data from the selected state and season
+  data = ili_flu_rsv %>% filter(state == geo, season == "20-21") %>%
+    mutate(ili_rescaled = ili/max(ili),
+           flu_rescaled = flu/max(flu),
+           rsv_rescaled = rsv/max(rsv))
+
+  # Use 10-fold CV to identify best lambda
+  cv = cv.glmnet(x = data.matrix(data[,c('flu', 'rsv')]),
+                 y = data.matrix(data[,'ili']),
+                 intercept = FALSE, alpha = 0)
+
+  # Use penalized package to run the ridge w/ no intercept + non-negative
+  # and the specified lambda from the CV model
+  fit = penalized(ili ~ flu + rsv ,
+                  positive = TRUE,
+                  unpenalized = ~0,
+                  data = data,
+                  lambda2 = cv$lambda.min)
+
+  coefs_tmp = coefficients(fit)
+
+  signals_tmp = data %>%
+    mutate(beta_flu = coefs_tmp[1],
+           beta_rsv = coefs_tmp[2],
+           flu_times_coef = flu*beta_flu,
+           rsv_times_coef = rsv*beta_rsv)
+
+  signals_with_betas_20_21 = bind_rows(signals_with_betas_20_21, signals_tmp)
+
+}
+signals_with_betas_20_21  %>%
+  ggplot(aes(x = week_end)) +
+  geom_line(aes(y = flu_times_coef, color = 'Flu'), linewidth = 0.65) +
+  geom_line(aes(y = rsv_times_coef, color = 'RSV'), linewidth = 0.65) +
+  geom_line(aes(y = ili, color = 'ILI'), linewidth = 0.65) +
+  facet_wrap(~state, scales = 'free', ncol = 5) +
+  scale_color_manual(values = c('ILI' = 'grey',
+                                'RSV' = 'dodgerblue4',
+                                'Flu' = 'darkred')) +
+  labs(x = '', y = '') +
+  envalysis::theme_publish() +
+  theme(axis.text.x = element_text(size = 5),
+        axis.ticks.x = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.text.y = element_blank(),
+        legend.title = element_blank(),
+        legend.position = 'right')
 
 
+# 2019-2020 season
+signals_with_betas_21_22 = NULL
+for(geo in ili_flu_rsv %>% filter(season == "21-22") %>% distinct(state) %>% pull()){
 
+  # Filter the data to only include data from the selected state and season
+  data = ili_flu_rsv %>% filter(state == geo, season == "21-22") %>%
+    mutate(ili_rescaled = ili/max(ili),
+           flu_rescaled = flu/max(flu),
+           rsv_rescaled = rsv/max(rsv))
 
+  # Use 10-fold CV to identify best lambda
+  cv = cv.glmnet(x = data.matrix(data[,c('flu', 'rsv')]),
+                 y = data.matrix(data[,'ili']),
+                 intercept = FALSE, alpha = 0)
+
+  # Use penalized package to run the ridge w/ no intercept + non-negative
+  # and the specified lambda from the CV model
+  fit = penalized(ili ~ flu + rsv ,
+                  positive = TRUE,
+                  unpenalized = ~0,
+                  data = data,
+                  lambda2 = cv$lambda.min)
+
+  coefs_tmp = coefficients(fit)
+
+  signals_tmp = data %>%
+    mutate(beta_flu = coefs_tmp[1],
+           beta_rsv = coefs_tmp[2],
+           flu_times_coef = flu*beta_flu,
+           rsv_times_coef = rsv*beta_rsv)
+
+  signals_with_betas_21_22 = bind_rows(signals_with_betas_21_22, signals_tmp)
+
+}
+signals_with_betas_21_22  %>%
+  ggplot(aes(x = week_end)) +
+  geom_line(aes(y = flu_times_coef, color = 'Flu'), linewidth = 0.65) +
+  geom_line(aes(y = rsv_times_coef, color = 'RSV'), linewidth = 0.65) +
+  geom_line(aes(y = ili, color = 'ILI'), linewidth = 0.65) +
+  facet_wrap(~state, scales = 'free', ncol = 5) +
+  scale_color_manual(values = c('ILI' = 'grey',
+                                'RSV' = 'dodgerblue4',
+                                'Flu' = 'darkred')) +
+  labs(x = '', y = '') +
+  envalysis::theme_publish() +
+  theme(axis.text.x = element_text(size = 5),
+        axis.ticks.x = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.text.y = element_blank(),
+        legend.title = element_blank(),
+        legend.position = 'right')
 
 
 
