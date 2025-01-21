@@ -8,9 +8,9 @@
 ##
 ## Date Created: 2024-07-01
 ##
-## Last Updated: 2025-01-10
+## Last Updated: 2025-01-20
 ##
-## Version: 1.3
+## Version: 1.4
 ## -----------------------------------------------------------------------------
 
 ## 1. Load packages and data ---------------------------------------------------
@@ -204,13 +204,13 @@ for(geo in ili_flu_rsv %>% filter(season == "16-17") %>% distinct(state) %>% pul
              rsv_rescaled = rsv/max(rsv))
 
   # Use 10-fold CV to identify best lambda
-  cv = cv.glmnet(x = data.matrix(data[,c('flu', 'rsv')]),
-                 y = data.matrix(data[,'ili']),
+  cv = cv.glmnet(x = data.matrix(data[,c('flu_rescaled', 'rsv_rescaled')]),
+                 y = data.matrix(data[,'ili_rescaled']),
                  intercept = FALSE, alpha = 0)
 
   # Use penalized package to run the ridge w/ no intercept + non-negative
   # and the specified lambda from the CV model
-  fit = penalized(ili ~ flu + rsv ,
+  fit = penalized(ili_rescaled ~ flu_rescaled + rsv_rescaled ,
                   positive = TRUE,
                   unpenalized = ~0,
                   data = data,
@@ -221,8 +221,8 @@ for(geo in ili_flu_rsv %>% filter(season == "16-17") %>% distinct(state) %>% pul
   signals_tmp = data %>%
     mutate(beta_flu = coefs_tmp[1],
            beta_rsv = coefs_tmp[2],
-           flu_times_coef = flu*beta_flu,
-           rsv_times_coef = rsv*beta_rsv)
+           flu_times_coef = flu_rescaled*beta_flu,
+           rsv_times_coef = rsv_rescaled*beta_rsv)
 
   signals_with_betas_16_17 = bind_rows(signals_with_betas_16_17, signals_tmp)
 
@@ -234,12 +234,14 @@ signals_with_betas_16_17
 # The volume of intensity will be lower for RSV since the overall percentages are
 # lower across the board.
 
+# That is, in mathematical terms t(max RSV) < t(max flu) or t(max covid)
+
 # 2016-2017 - RSV first in 2/5 state-seasons, flu and RSV synchronous in 3/5 states
 signals_with_betas_16_17  %>%
   ggplot(aes(x = week_end)) +
   geom_line(aes(y = flu_times_coef, color = 'Flu'), linewidth = 0.65) +
   geom_line(aes(y = rsv_times_coef, color = 'RSV'), linewidth = 0.65) +
-  geom_line(aes(y = ili, color = 'ILI'), linewidth = 0.65) +
+  geom_line(aes(y = ili_rescaled, color = 'ILI'), linewidth = 0.65) +
   facet_wrap(~state, scales = 'free', ncol = 3) +
   scale_color_manual(values = c('ILI' = 'grey',
                                 'RSV' = 'dodgerblue4',
@@ -252,6 +254,7 @@ signals_with_betas_16_17  %>%
         axis.text.y = element_blank(),
         legend.title = element_blank(),
         legend.position = 'right')
+ggsave(file = "figures/16_17_peak_timing.png", height = 6, width = 10, units = "in", bg = "white")
 
 # 2017-2018 season
 signals_with_betas_17_18 = NULL
@@ -264,13 +267,13 @@ for(geo in ili_flu_rsv %>% filter(season == "17-18") %>% distinct(state) %>% pul
            rsv_rescaled = rsv/max(rsv))
 
   # Use 10-fold CV to identify best lambda
-  cv = cv.glmnet(x = data.matrix(data[,c('flu', 'rsv')]),
-                 y = data.matrix(data[,'ili']),
+  cv = cv.glmnet(x = data.matrix(data[,c('flu_rescaled', 'rsv_rescaled')]),
+                 y = data.matrix(data[,'ili_rescaled']),
                  intercept = FALSE, alpha = 0)
 
   # Use penalized package to run the ridge w/ no intercept + non-negative
   # and the specified lambda from the CV model
-  fit = penalized(ili ~ flu + rsv ,
+  fit = penalized(ili_rescaled ~ flu_rescaled + rsv_rescaled ,
                   positive = TRUE,
                   unpenalized = ~0,
                   data = data,
@@ -281,8 +284,8 @@ for(geo in ili_flu_rsv %>% filter(season == "17-18") %>% distinct(state) %>% pul
   signals_tmp = data %>%
     mutate(beta_flu = coefs_tmp[1],
            beta_rsv = coefs_tmp[2],
-           flu_times_coef = flu*beta_flu,
-           rsv_times_coef = rsv*beta_rsv)
+           flu_times_coef = flu_rescaled*beta_flu,
+           rsv_times_coef = rsv_rescaled*beta_rsv)
 
   signals_with_betas_17_18 = bind_rows(signals_with_betas_17_18, signals_tmp)
 
@@ -292,7 +295,7 @@ signals_with_betas_17_18  %>%
   ggplot(aes(x = week_end)) +
   geom_line(aes(y = flu_times_coef, color = 'Flu'), linewidth = 0.65) +
   geom_line(aes(y = rsv_times_coef, color = 'RSV'), linewidth = 0.65) +
-  geom_line(aes(y = ili, color = 'ILI'), linewidth = 0.65) +
+  geom_line(aes(y = ili_rescaled, color = 'ILI'), linewidth = 0.65) +
   facet_wrap(~state, scales = 'free', ncol = 3) +
   scale_color_manual(values = c('ILI' = 'grey',
                                 'RSV' = 'dodgerblue4',
@@ -305,6 +308,7 @@ signals_with_betas_17_18  %>%
         axis.text.y = element_blank(),
         legend.title = element_blank(),
         legend.position = 'right')
+ggsave(file = "figures/17_18_peak_timing.png", height = 6, width = 10, units = "in", bg = "white")
 # RSV first in 1/6
 # Flu first in 3/6
 # Synchronous in 2/6
@@ -320,13 +324,13 @@ for(geo in ili_flu_rsv %>% filter(season == "18-19") %>% distinct(state) %>% pul
            rsv_rescaled = rsv/max(rsv))
 
   # Use 10-fold CV to identify best lambda
-  cv = cv.glmnet(x = data.matrix(data[,c('flu', 'rsv')]),
-                 y = data.matrix(data[,'ili']),
+  cv = cv.glmnet(x = data.matrix(data[,c('flu_rescaled', 'rsv_rescaled')]),
+                 y = data.matrix(data[,'ili_rescaled']),
                  intercept = FALSE, alpha = 0)
 
   # Use penalized package to run the ridge w/ no intercept + non-negative
   # and the specified lambda from the CV model
-  fit = penalized(ili ~ flu + rsv ,
+  fit = penalized(ili_rescaled ~ flu_rescaled + rsv_rescaled ,
                   positive = TRUE,
                   unpenalized = ~0,
                   data = data,
@@ -337,8 +341,8 @@ for(geo in ili_flu_rsv %>% filter(season == "18-19") %>% distinct(state) %>% pul
   signals_tmp = data %>%
     mutate(beta_flu = coefs_tmp[1],
            beta_rsv = coefs_tmp[2],
-           flu_times_coef = flu*beta_flu,
-           rsv_times_coef = rsv*beta_rsv)
+           flu_times_coef = flu_rescaled*beta_flu,
+           rsv_times_coef = rsv_rescaled*beta_rsv)
 
   signals_with_betas_18_19 = bind_rows(signals_with_betas_18_19, signals_tmp)
 
@@ -347,7 +351,7 @@ signals_with_betas_18_19  %>%
   ggplot(aes(x = week_end)) +
   geom_line(aes(y = flu_times_coef, color = 'Flu'), linewidth = 0.65) +
   geom_line(aes(y = rsv_times_coef, color = 'RSV'), linewidth = 0.65) +
-  geom_line(aes(y = ili, color = 'ILI'), linewidth = 0.65) +
+  geom_line(aes(y = ili_rescaled, color = 'ILI'), linewidth = 0.65) +
   facet_wrap(~state, scales = 'free', ncol = 5) +
   scale_color_manual(values = c('ILI' = 'grey',
                                 'RSV' = 'dodgerblue4',
@@ -360,6 +364,8 @@ signals_with_betas_18_19  %>%
         axis.text.y = element_blank(),
         legend.title = element_blank(),
         legend.position = 'right')
+ggsave(file = "figures/18_19_peak_timing.png", height = 6, width = 10, units = "in", bg = "white")
+
 # Flu first in 4/10
 # RSV first in 6/10
 
@@ -433,6 +439,14 @@ signals_with_betas_19_20  %>%
         legend.title = element_blank(),
         legend.position = 'right')
 # RSV in 5/10
+ggsave(file = "figures/19_20_peak_timing.png", height = 6, width = 10, units = "in", bg = "white")
+
+ili_flu_rsv_covid %>% filter(season == "20-21") %>% view()
+
+rsvnet_adults %>%
+  filter(week_end >= as_date("2020-05-01") & week_end <= as_date("2021-06-01")) %>%
+  arrange(state) %>%
+  view()
 
 # 2020-2021 season
 signals_with_betas_20_21 = NULL
@@ -492,24 +506,29 @@ signals_with_betas_20_21 %>%
         legend.title = element_blank(),
         legend.position = 'right')
 
-# 2019-2020 season
+# 21-22 season
 signals_with_betas_21_22 = NULL
-for(geo in ili_flu_rsv %>% filter(season == "21-22") %>% distinct(state) %>% pull()){
+for(geo in ili_flu_rsv_covid %>% filter(season == "21-22") %>% distinct(state) %>% pull()){
 
   # Filter the data to only include data from the selected state and season
-  data = ili_flu_rsv %>% filter(state == geo, season == "21-22") %>%
-    mutate(ili_rescaled = ili/max(ili),
-           flu_rescaled = flu/max(flu),
-           rsv_rescaled = rsv/max(rsv))
+  data = ili_flu_rsv_covid %>% filter(state == geo, season == "21-22") %>%
+    mutate(ili_rescaled = ili/max(ili, na.rm = TRUE),
+           flu_rescaled = flu/max(flu, na.rm = TRUE),
+           rsv_rescaled = rsv/max(rsv, na.rm = TRUE),
+           covid_rescaled = covid/max(covid, na.rm = TRUE)) %>%
+    mutate(across(everything(), ~ replace_na(., 0)))
 
   # Use 10-fold CV to identify best lambda
-  cv = cv.glmnet(x = data.matrix(data[,c('flu', 'rsv')]),
-                 y = data.matrix(data[,'ili']),
+  cv = cv.glmnet(x = data.matrix(data[,c('flu_rescaled', 'rsv_rescaled', 'covid_rescaled')]),
+                 y = data.matrix(data[,'ili_rescaled']),
                  intercept = FALSE, alpha = 0)
+  # cv = cv.glmnet(x = data.matrix(data[,c('flu_rescaled', 'rsv_rescaled', 'covid_rescaled')]),
+  #                y = data.matrix(data[,'ili_rescaled']),
+  #                intercept = FALSE, alpha = 0)
 
   # Use penalized package to run the ridge w/ no intercept + non-negative
   # and the specified lambda from the CV model
-  fit = penalized(ili ~ flu + rsv ,
+  fit = penalized(ili_rescaled ~ flu_rescaled + rsv_rescaled + covid_rescaled,
                   positive = TRUE,
                   unpenalized = ~0,
                   data = data,
@@ -520,22 +539,28 @@ for(geo in ili_flu_rsv %>% filter(season == "21-22") %>% distinct(state) %>% pul
   signals_tmp = data %>%
     mutate(beta_flu = coefs_tmp[1],
            beta_rsv = coefs_tmp[2],
-           flu_times_coef = flu*beta_flu,
-           rsv_times_coef = rsv*beta_rsv)
+           beta_covid = coefs_tmp[3],
+           flu_times_coef = flu_rescaled*beta_flu,
+           rsv_times_coef = rsv_rescaled*beta_rsv,
+           covid_times_coef = covid_rescaled*beta_covid)
 
   signals_with_betas_21_22 = bind_rows(signals_with_betas_21_22, signals_tmp)
 
 }
-signals_with_betas_21_22  %>%
+signals_with_betas_21_22 %>%
   ggplot(aes(x = week_end)) +
   geom_line(aes(y = flu_times_coef, color = 'Flu'), linewidth = 0.65) +
   geom_line(aes(y = rsv_times_coef, color = 'RSV'), linewidth = 0.65) +
-  geom_line(aes(y = ili, color = 'ILI'), linewidth = 0.65) +
+  geom_line(aes(y = covid_times_coef, color = "COVID-19"), linewidth = 0.65) +
+  geom_line(aes(y = ili_rescaled, color = 'ILI'), linewidth = 0.65) +
   facet_wrap(~state, scales = 'free', ncol = 5) +
-  scale_color_manual(values = c('ILI' = 'grey',
-                                'RSV' = 'dodgerblue4',
-                                'Flu' = 'darkred')) +
+  scale_color_manual(values = c('ILI' = '#E2DBC9',
+                                'RSV' = '#183A5A',
+                                'Flu' = '#C34129',
+                                'COVID-19' = "#EFB75B")) +
   labs(x = '', y = '') +
+  scale_x_date(date_labels = "%b\n%y",
+               date_breaks = "2 months") +
   envalysis::theme_publish() +
   theme(axis.text.x = element_text(size = 5),
         axis.ticks.x = element_blank(),
@@ -543,23 +568,165 @@ signals_with_betas_21_22  %>%
         axis.text.y = element_blank(),
         legend.title = element_blank(),
         legend.position = 'right')
+ggsave(file = "figures/21_22_peak_timing.png", height = 6, width = 12, units = "in", bg = "white")
+
+signals_with_betas_22_23 = NULL
+for(geo in ili_flu_rsv_covid %>% filter(season == "22-23") %>% distinct(state) %>% pull()){
+
+  # Filter the data to only include data from the selected state and season
+  data = ili_flu_rsv_covid %>% filter(state == geo, season == "22-23") %>%
+    mutate(ili_rescaled = ili/max(ili, na.rm = TRUE),
+           flu_rescaled = flu/max(flu, na.rm = TRUE),
+           rsv_rescaled = rsv/max(rsv, na.rm = TRUE),
+           covid_rescaled = covid/max(covid, na.rm = TRUE)) %>%
+    mutate(across(everything(), ~ replace_na(., 0)))
+
+  # Use 10-fold CV to identify best lambda
+  cv = cv.glmnet(x = data.matrix(data[,c('flu_rescaled', 'rsv_rescaled', 'covid_rescaled')]),
+                 y = data.matrix(data[,'ili_rescaled']),
+                 intercept = FALSE, alpha = 0)
+  # cv = cv.glmnet(x = data.matrix(data[,c('flu_rescaled', 'rsv_rescaled', 'covid_rescaled')]),
+  #                y = data.matrix(data[,'ili_rescaled']),
+  #                intercept = FALSE, alpha = 0)
+
+  # Use penalized package to run the ridge w/ no intercept + non-negative
+  # and the specified lambda from the CV model
+  fit = penalized(ili_rescaled ~ flu_rescaled + rsv_rescaled + covid_rescaled,
+                  positive = TRUE,
+                  unpenalized = ~0,
+                  data = data,
+                  lambda2 = cv$lambda.min)
+
+  coefs_tmp = coefficients(fit)
+
+  signals_tmp = data %>%
+    mutate(beta_flu = coefs_tmp[1],
+           beta_rsv = coefs_tmp[2],
+           beta_covid = coefs_tmp[3],
+           flu_times_coef = flu_rescaled*beta_flu,
+           rsv_times_coef = rsv_rescaled*beta_rsv,
+           covid_times_coef = covid_rescaled*beta_covid)
+
+  signals_with_betas_22_23 = bind_rows(signals_with_betas_22_23, signals_tmp)
+
+}
+signals_with_betas_22_23 %>%
+  ggplot(aes(x = week_end)) +
+  geom_line(aes(y = flu_times_coef, color = 'Flu'), linewidth = 0.65) +
+  geom_line(aes(y = rsv_times_coef, color = 'RSV'), linewidth = 0.65) +
+  geom_line(aes(y = covid_times_coef, color = "COVID-19"), linewidth = 0.65) +
+  geom_line(aes(y = ili_rescaled, color = 'ILI'), linewidth = 0.65) +
+  facet_wrap(~state, scales = 'free', ncol = 5) +
+  scale_color_manual(values = c('ILI' = '#E2DBC9',
+                                'RSV' = '#183A5A',
+                                'Flu' = '#C34129',
+                                'COVID-19' = "#EFB75B")) +
+  labs(x = '', y = '') +
+  scale_x_date(date_labels = "%b\n%y",
+               date_breaks = "2 months") +
+  envalysis::theme_publish() +
+  theme(axis.text.x = element_text(size = 5),
+        axis.ticks.x = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.text.y = element_blank(),
+        legend.title = element_blank(),
+        legend.position = 'right')
+ggsave("figures/22_23_peak_timing.png", height = 6, width = 12, units = "in", bg = "white")
+
+signals_with_betas_23_24 = NULL
+for(geo in ili_flu_rsv_covid %>% filter(season == "23-24") %>% distinct(state) %>% pull()){
+
+  # Filter the data to only include data from the selected state and season
+  data = ili_flu_rsv_covid %>% filter(state == geo, season == "23-24") %>%
+    mutate(ili_rescaled = ili/max(ili, na.rm = TRUE),
+           flu_rescaled = flu/max(flu, na.rm = TRUE),
+           rsv_rescaled = rsv/max(rsv, na.rm = TRUE),
+           covid_rescaled = covid/max(covid, na.rm = TRUE)) %>%
+    mutate(across(everything(), ~ replace_na(., 0)))
+
+  # Use 10-fold CV to identify best lambda
+  cv = cv.glmnet(x = data.matrix(data[,c('flu_rescaled', 'rsv_rescaled', 'covid_rescaled')]),
+                 y = data.matrix(data[,'ili_rescaled']),
+                 intercept = FALSE, alpha = 0)
+  # cv = cv.glmnet(x = data.matrix(data[,c('flu_rescaled', 'rsv_rescaled', 'covid_rescaled')]),
+  #                y = data.matrix(data[,'ili_rescaled']),
+  #                intercept = FALSE, alpha = 0)
+
+  # Use penalized package to run the ridge w/ no intercept + non-negative
+  # and the specified lambda from the CV model
+  fit = penalized(ili_rescaled ~ flu_rescaled + rsv_rescaled + covid_rescaled,
+                  positive = TRUE,
+                  unpenalized = ~0,
+                  data = data,
+                  lambda2 = cv$lambda.min)
+
+  coefs_tmp = coefficients(fit)
+
+  signals_tmp = data %>%
+    mutate(beta_flu = coefs_tmp[1],
+           beta_rsv = coefs_tmp[2],
+           beta_covid = coefs_tmp[3],
+           flu_times_coef = flu_rescaled*beta_flu,
+           rsv_times_coef = rsv_rescaled*beta_rsv,
+           covid_times_coef = covid_rescaled*beta_covid)
+
+  signals_with_betas_23_24 = bind_rows(signals_with_betas_23_24, signals_tmp)
+
+}
+signals_with_betas_23_24 %>%
+  ggplot(aes(x = week_end)) +
+  geom_line(aes(y = flu_times_coef, color = 'Flu'), linewidth = 0.65) +
+  geom_line(aes(y = rsv_times_coef, color = 'RSV'), linewidth = 0.65) +
+  # geom_line(aes(y = covid_times_coef, color = "COVID-19"), linewidth = 0.65) +
+  geom_line(aes(y = ili_rescaled, color = 'ILI'), linewidth = 0.65) +
+  facet_wrap(~state, scales = 'free', ncol = 5) +
+  scale_color_manual(values = c('ILI' = '#E2DBC9',
+                                'RSV' = '#183A5A',
+                                'Flu' = '#C34129')) +
+                                # 'COVID-19' = "#EFB75B")) +
+  labs(x = '', y = '') +
+  scale_x_date(date_labels = "%b\n%y",
+               date_breaks = "2 months") +
+  envalysis::theme_publish() +
+  theme(axis.text.x = element_text(size = 5),
+        axis.ticks.x = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.text.y = element_blank(),
+        legend.title = element_blank(),
+        legend.position = 'right')
+ggsave("figures/23_24_peak_timing.png", height = 6, width = 12, units = "in", bg = "white")
+
+## Determining in how many regions RSV peak occurs before Flu peak
+
+signals_with_betas_23_24
 
 
+find_states_with_early_rsv_peak <- function(data) {
+  data %>%
+    group_by(state) %>%
+    summarize(
+      max_rsv_date = week_end[which.max(rsv_rescaled)],
+      max_flu_date = week_end[which.max(flu_rescaled)],
+      .groups = "drop"
+    ) %>%
+    filter(max_rsv_date < max_flu_date) %>%
+    select(state, max_rsv_date, max_flu_date)
+}
 
+find_states_with_early_rsv_peak(signals_with_betas_16_17) #3/6
+find_states_with_early_rsv_peak(signals_with_betas_17_18) #1/6
+find_states_with_early_rsv_peak(signals_with_betas_18_19) #7/10
+find_states_with_early_rsv_peak(signals_with_betas_19_20) #5/10
+find_states_with_early_rsv_peak(signals_with_betas_20_21) # COVID year
+find_states_with_early_rsv_peak(signals_with_betas_21_22) #10/10
+find_states_with_early_rsv_peak(signals_with_betas_22_23) #4/10
+find_states_with_early_rsv_peak(signals_with_betas_23_24) #2/10
 
+# In 32/52 state-seasons RSV was first
 
-
-
-
-
-
-
-
-
-
-
-
-
+# Example usage
+`Ωresult <- find_states_with_early_rsv_peak(data)
+print(result)
 
 ## Flu Data
 ## FluSurv
