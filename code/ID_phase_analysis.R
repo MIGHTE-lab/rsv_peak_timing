@@ -1,5 +1,5 @@
 ## -----------------------------------------------------------------------------
-## Script name: evaluate_NSSP_signal_quality.R
+## Script name: ID_phase_analysis.R
 ##
 ## Purpose of script:
 ##
@@ -7,7 +7,7 @@
 ##
 ## Date Created: 2025-01-29
 ##
-## Last Updated:
+## Last Updated: 2025-02-05
 ## -----------------------------------------------------------------------------
 
 ## 1. Load packages and data ---------------------------------------------------
@@ -32,7 +32,9 @@ library(caret)
 setwd("~/Documents/Projects/rsv_peak_timing")
 
 ## Load NSSP data
-dat = read_csv("data/NSSP/NSSP_Emergency_Department_Visit_Trajectories_by_State_and_Sub_State_Regions-_COVID-19__Flu__RSV__Combined___20250129.csv")
+dat = read_csv(
+  "data/NSSP/NSSP_Emergency_Department_Visit_Trajectories_by_State_and_Sub_State_Regions-_COVID-19__Flu__RSV__Combined___20250129.csv"
+)
 
 ## Load ILI data
 ## ILI data - need data from 21 - 23
@@ -63,23 +65,34 @@ ili_data_with_dates = ili_data %>%
   select(region, year, epiweek, week_end, unweighted_ili, ilitotal) %>%
   rename(state = region)
 
-dat = dat %>% filter(county == "All") %>% select(week_end, geography, percent_visits_covid, percent_visits_influenza, percent_visits_rsv)
+dat = dat %>% filter(county == "All") %>% select(
+  week_end,
+  geography,
+  percent_visits_covid,
+  percent_visits_influenza,
+  percent_visits_rsv
+)
 
 # Create season variable
 dat = dat %>%
   mutate(
     year = year(week_end),
     month = month(week_end),
-    ili_season = ifelse(month >= 6,
-                        paste0(year %% 100, "-", (year + 1) %% 100),  # If June or later: "YY-(YY+1)"
-                        paste0((year - 1) %% 100, "-", year %% 100))   # If before June: "(YY-1)-YY"
+    ili_season = ifelse(
+      month >= 6,
+      paste0(year %% 100, "-", (year + 1) %% 100),
+      # If June or later: "YY-(YY+1)"
+      paste0((year - 1) %% 100, "-", year %% 100)
+    )   # If before June: "(YY-1)-YY"
   )
 
-dat = dat %>% rename(state = geography,
-               covid = percent_visits_covid,
-               flu = percent_visits_influenza,
-               rsv = percent_visits_rsv,
-               season = ili_season) %>%
+dat = dat %>% rename(
+  state = geography,
+  covid = percent_visits_covid,
+  flu = percent_visits_influenza,
+  rsv = percent_visits_rsv,
+  season = ili_season
+) %>%
   select(week_end, state, covid, flu, rsv, season)
 
 dat_combined = dat %>% left_join(ili_data_with_dates, by = c("state", "week_end")) %>%
@@ -92,9 +105,9 @@ minmax = function(x) {
 
 dat_combined_ = dat_combined %>% drop_na()
 
-# Now run the penalized model for each season with states as the individual unit of analysis
+# 2. Running the penalized ridge models ----
 
-# 22-23 season
+# 22-23 season ----
 nssp_signals_22_23 = NULL
 for (geo in dat_combined_ %>% distinct(state) %>% pull()) {
   # Filter the data to only include data from the selected state and season
@@ -145,7 +158,7 @@ nssp_signals_22_23 %>%
   geom_line(aes(y = rsv_times_coef, color = 'RSV'), linewidth = 0.65) +
   geom_line(aes(y = covid_times_coef, color = "COVID-19"), linewidth = 0.65) +
   geom_line(aes(y = ili_rescaled, color = 'ILI'), linewidth = 0.65) +
-  facet_wrap( ~ state, scales = 'free', ncol = 10) +
+  facet_wrap(~ state, scales = 'free', ncol = 10) +
   scale_color_manual(values = c(
     'ILI' = '#E2DBC9',
     'RSV' = '#183A5A',
@@ -163,7 +176,7 @@ nssp_signals_22_23 %>%
     legend.title = element_blank(),
     legend.position = 'right'
   )
-ggsave(file = "figures/nssp_22_23.png", width = 16, height = 10, units = "in", bg = "white")
+# ggsave(file = "figures/nssp_22_23.png", width = 16, height = 10, units = "in", bg = "white")
 
 # 23-24 season ----
 nssp_signals_23_24 = NULL
@@ -216,7 +229,7 @@ nssp_signals_23_24 %>%
   geom_line(aes(y = rsv_times_coef, color = 'RSV'), linewidth = 0.65) +
   geom_line(aes(y = covid_times_coef, color = "COVID-19"), linewidth = 0.65) +
   geom_line(aes(y = ili_rescaled, color = 'ILI'), linewidth = 0.65) +
-  facet_wrap( ~ state, scales = 'free', ncol = 10) +
+  facet_wrap(~ state, scales = 'free', ncol = 10) +
   scale_color_manual(values = c(
     'ILI' = '#E2DBC9',
     'RSV' = '#183A5A',
@@ -234,8 +247,7 @@ nssp_signals_23_24 %>%
     legend.title = element_blank(),
     legend.position = 'right'
   )
-ggsave(file = "figures/nssp_23_24.png", width = 16, height = 10, units = "in", bg = "white")
-
+# ggsave(file = "figures/nssp_23_24.png", width = 16, height = 10, units = "in", bg = "white")
 
 # 24-25 season ----
 nssp_signals_24_25 = NULL
@@ -288,7 +300,7 @@ nssp_signals_24_25 %>%
   geom_line(aes(y = rsv_times_coef, color = 'RSV'), linewidth = 0.65) +
   geom_line(aes(y = covid_times_coef, color = "COVID-19"), linewidth = 0.65) +
   geom_line(aes(y = ili_rescaled, color = 'ILI'), linewidth = 0.65) +
-  facet_wrap( ~ state, scales = 'free', ncol = 10) +
+  facet_wrap(~ state, scales = 'free', ncol = 10) +
   scale_color_manual(values = c(
     'ILI' = '#E2DBC9',
     'RSV' = '#183A5A',
@@ -306,24 +318,210 @@ nssp_signals_24_25 %>%
     legend.title = element_blank(),
     legend.position = 'right'
   )
-ggsave(file = "figures/nssp_24_25.png", width = 16, height = 10, units = "in", bg = "white")
+# ggsave(file = "figures/nssp_24_25.png", width = 16, height = 10, units = "in", bg = "white")
+
+# Generating the 3x3 panel Figure 1. Show the seasonal changes for MD, NY, and TX
+
+# First combine the three yearly datasets
+nssp_all_years = bind_rows(nssp_signals_22_23, nssp_signals_23_24, nssp_signals_24_25)
+
+# Then select only the states of interest (MD, NY, TX)
+nssp_all_years %>%
+  filter(state %in% c("Maryland", "Texas", "New York")) %>%
+  ggplot(aes(x = week_end)) +
+  geom_line(aes(y = flu_times_coef, color = 'Flu'), linewidth = 0.85) +
+  geom_line(aes(y = rsv_times_coef, color = 'RSV'), linewidth = 0.85) +
+  geom_line(aes(y = covid_times_coef, color = "COVID-19"), linewidth = 0.85) +
+  geom_line(aes(y = ili_rescaled, color = 'ILI'), linewidth = 0.85) +
+  facet_grid(state ~ season, scales = 'free') +
+  scale_color_manual(values = c(
+    'ILI' = '#E2DBC9',
+    'RSV' = '#183A5A',
+    'Flu' = '#C34129',
+    'COVID-19' = "#EFB75B"
+  )) +
+  labs(x = '', y = '') +
+  scale_x_date(date_labels = "%b\n%y", date_breaks = "2 months") +
+  envalysis::theme_publish() +
+  theme(
+    axis.text.x = element_text(size = 5),
+    axis.ticks.x = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.text.y = element_blank(),
+    legend.title = element_blank(),
+    legend.position = 'bottom'
+  )
+ggsave(file = "figures/3x3_MD_NY_TX_v1.png", height = 8, width = 8, units = "in", bg = "white")
+
+find_states_with_early_rsv_peak = function(data) {
+  return(
+   data %>%
+    group_by(state) %>%
+    summarize(
+      max_rsv_date = week_end[which.max(rsv_rescaled)],
+      max_flu_date = week_end[which.max(flu_rescaled)],
+      .groups = "drop"
+    ) %>%
+    filter(max_rsv_date < max_flu_date) %>%
+    select(state, max_rsv_date, max_flu_date)
+  )
+}
+
+find_states_with_concurrent_rsv_peak = function(data) {
+  return(
+    data %>%
+      group_by(state) %>%
+      summarize(
+        max_rsv_date = week_end[which.max(rsv_rescaled)],
+        max_flu_date = week_end[which.max(flu_rescaled)],
+        .groups = "drop"
+      ) %>%
+      filter(max_rsv_date == max_flu_date) %>%
+      select(state, max_rsv_date, max_flu_date)
+  )
+}
+
+find_states_with_early_flu_peak = function(data) {
+  return(
+    data %>%
+      group_by(state) %>%
+      summarize(
+        max_rsv_date = week_end[which.max(rsv_rescaled)],
+        max_flu_date = week_end[which.max(flu_rescaled)],
+        .groups = "drop"
+      ) %>%
+      filter(max_rsv_date > max_flu_date) %>%
+      select(state, max_rsv_date, max_flu_date)
+  )
+}
+
+# Function calls
+# Flu before RSV
+find_states_with_early_flu_peak(nssp_signals_22_23) #2
+find_states_with_early_flu_peak(nssp_signals_23_24) #9
+find_states_with_early_flu_peak(nssp_signals_24_25) #15
+# 26
+
+find_states_with_early_rsv_peak(nssp_signals_22_23) #45
+find_states_with_early_rsv_peak(nssp_signals_23_24) #35
+find_states_with_early_rsv_peak(nssp_signals_24_25) #23
+# 103
+
+find_states_with_concurrent_rsv_peak(nssp_signals_22_23) #3
+find_states_with_concurrent_rsv_peak(nssp_signals_23_24) #6
+find_states_with_concurrent_rsv_peak(nssp_signals_24_25) #12
+# 21
+
+all_states <- c(
+  "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado",
+  "Connecticut", "Delaware", "District of Columbia", "Florida", "Georgia",
+  "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky",
+  "Louisiana", "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota",
+  "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada", "New Hampshire",
+  "New Jersey", "New Mexico", "New York", "North Carolina", "North Dakota",
+  "Ohio", "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island", "South Carolina",
+  "South Dakota", "Tennessee", "Texas", "Utah", "Vermont", "Virginia",
+  "Washington", "West Virginia", "Wisconsin", "Wyoming"
+)
+
+setdiff(all_states, unique(dat_combined_$state))
+
+nssp_22_23_flu_before_rsv = find_states_with_early_flu_peak(nssp_signals_22_23)
+nssp_22_23_rsv_before_flu = find_states_with_early_rsv_peak(nssp_signals_22_23)
+nssp_22_23_concurrent_peak = find_states_with_concurrent_rsv_peak(nssp_signals_22_23)
+
+nssp_22_23_check = bind_rows(nssp_22_23_flu_before_rsv, nssp_22_23_rsv_before_flu, nssp_22_23_concurrent_peak)
+setdiff(all_states, nssp_22_23_check$state)
+
+
+nssp_signals_22_23 %>%
+  group_by(state) %>%
+  summarize(
+    max_rsv_date = week_end[which.max(rsv_rescaled)],
+    max_flu_date = week_end[which.max(flu_rescaled)],
+    .groups = "drop"
+  ) %>%
+  filter(max_rsv_date == max_flu_date) %>%
+  select(state, max_rsv_date, max_flu_date) %>%
+  nrow()
+
+# Getting the month ranges for the peak values of RSV and influenza
+nssp_signals_22_23 %>%
+  group_by(state) %>%
+  summarize(
+    max_rsv_date = week_end[which.max(rsv_rescaled)],
+    max_flu_date = week_end[which.max(flu_rescaled)],
+    max_ili_date = week_end[which.max(ili_rescaled)],
+    .groups = "drop"
+  ) %>%
+ summarize(min_rsv = min(max_rsv_date),
+           max_rsv = max(max_rsv_date),
+           min_flu = min(max_flu_date),
+           max_flu = max(max_flu_date),
+           min_ili = min(max_ili_date),
+           max_ili = max(max_ili_date))
+# rsv: min Oct 1, max_rsv Dec 24
+# flu: min Nov 5 max Dec 31
+
+nssp_signals_23_24  %>%
+  group_by(state) %>%
+  summarize(
+    max_rsv_date = week_end[which.max(rsv_rescaled)],
+    max_flu_date = week_end[which.max(flu_rescaled)],
+    max_ili_date = week_end[which.max(ili_rescaled)],
+    .groups = "drop"
+  ) %>%
+  summarize(min_rsv = min(max_rsv_date),
+            max_rsv = max(max_rsv_date),
+            min_flu = min(max_flu_date),
+            max_flu = max(max_flu_date),
+            min_ili = min(max_ili_date),
+            max_ili = max(max_ili_date))
+# rsv: min Nov 4, max Feb 24
+# flu: min Nov 4, max March 9
+# ili: min Nov 4, Max March 9
+
+nssp_signals_24_25  %>%
+  group_by(state) %>%
+  summarize(
+    max_rsv_date = week_end[which.max(rsv_rescaled)],
+    max_flu_date = week_end[which.max(flu_rescaled)],
+    max_ili_date = week_end[which.max(ili_rescaled)],
+    .groups = "drop"
+  ) %>%
+  summarize(min_rsv = min(max_rsv_date),
+            max_rsv = max(max_rsv_date),
+            min_flu = min(max_flu_date),
+            max_flu = max(max_flu_date),
+            min_ili = min(max_ili_date),
+            max_ili = max(max_ili_date))
+# In the current season, this method does not really work. At least for now,
+# the data suggests that flu and RSV are currently peaking
+
+
+
 
 # Evaluating temporal relationships between RSV and Flu signals
 nssp_signals_22_23 = nssp_signals_22_23 %>% select(-c(year, epiweek))
 
-write_csv(nssp_signals_22_23, file = "data/nssp_signals_22_23_processed.csv")
+# write_csv(nssp_signals_22_23, file = "data/nssp_signals_22_23_processed.csv")
 
-# Testing out phase analysis
+# Phase Analysis ------
 
 # First bind all the data together and create lags of the signals
 nssp_full = bind_rows(nssp_signals_22_23, nssp_signals_23_24, nssp_signals_24_25)
 
 nssp_full = nssp_full %>%
-  mutate(vir_rhs = covid + flu + rsv,
-         vir_rescaled_rhs = covid_rescaled + flu_rescaled + rsv_rescaled)
+  mutate(
+    vir_rhs = covid + flu + rsv,
+    vir_rescaled_rhs = covid_rescaled + flu_rescaled + rsv_rescaled
+  )
 
 # Find optimal lag for ILI and the regression rhs
-ccf(nssp_full$vir_rhs, nssp_full$ili_rescaled, lag.max = 8, plot = TRUE)
+ccf(nssp_full$vir_rhs,
+    nssp_full$ili_rescaled,
+    lag.max = 8,
+    plot = TRUE)
 # In fact the optimal lag is @ lag 0
 
 nssp_full_lagged = nssp_full %>%
@@ -335,19 +533,23 @@ nssp_full_lagged = nssp_full %>%
     RSV_2 = lag(rsv, 2),
     RSV_3 = lag(rsv, 3),
     RSV_4 = lag(rsv, 4),
+    RSV_5 = lag(rsv, 5),
+    RSV_6 = lag(rsv, 6),
 
     FLU_0 = flu,
     FLU_1 = lag(flu, 1),
     FLU_2 = lag(flu, 2),
     FLU_3 = lag(flu, 3),
     FLU_4 = lag(flu, 4),
+    FLU_5 = lag(flu, 5),
+    FLU_6 = lag(flu, 6),
 
     # Create seasonal terms
     week_num = week(week_end),
-    sin_annual = sin(2*pi*week_num/52),
-    cos_annual = cos(2*pi*week_num/52),
-    sin_semiannual = sin(4*pi*week_num/52),
-    cos_semiannual = cos(4*pi*week_num/52)
+    sin_annual = sin(2 * pi * week_num / 52),
+    cos_annual = cos(2 * pi * week_num / 52),
+    sin_semiannual = sin(4 * pi * week_num / 52),
+    cos_semiannual = cos(4 * pi * week_num / 52)
   )
 
 nssp_full_lagged = nssp_full_lagged %>% select(-c(year, epiweek))
@@ -359,9 +561,184 @@ model <- nlme::lme(
     FLU_0 + FLU_1 + FLU_2 + FLU_3 + FLU_4 +
     sin_annual + cos_annual +
     sin_semiannual + cos_semiannual,
-  random = ~ 1 | state/season,
+  random = ~ 1 | state / season,
   correlation = nlme::corAR1(),
   data = nssp_full_lagged
 )
 
 summary(model)
+
+# If we want the model to identify whether flu leads RSV or vice-versa, we
+# create two models: a lagged mixed-effects model where RSV is the outcome and
+# a lagged mixed effects model where Flu is the outcome.
+
+nssp_full_lagged[is.na(nssp_full_lagged) == TRUE] = 0
+
+# Modeling with nlme ----
+
+model_rsv_flu = nlme::lme(
+  rsv ~ flu + FLU_1 + FLU_2 + FLU_3 + FLU_4 +
+    FLU_5 + FLU_6 + sin_annual + cos_annual +
+    sin_semiannual + cos_semiannual,
+  random = ~ 1 | state / season,
+  correlation = nlme::corAR1(),
+  data = nssp_full_lagged
+)
+
+model_flu_rsv = nlme::lme(
+  flu ~ rsv + RSV_1 + RSV_2 + RSV_3 + RSV_4 +
+    RSV_5 + RSV_6 +  sin_annual + cos_annual +
+    sin_semiannual + cos_semiannual,
+  random = ~ 1 | state / season,
+  correlation = nlme::corAR1(),
+  data = nssp_full_lagged
+)
+
+# Alternative testing using lmer ----
+library(lme4)
+library(lmerTest)
+
+
+rsv_model = lmer(
+  rsv ~ flu + FLU_1 + FLU_2 + FLU_3 + FLU_4 + FLU_5 + FLU_6 +
+    sin_annual + cos_annual + sin_semiannual + cos_semiannual +
+    (1 | state) + (1 | season:state),
+  data = nssp_full_lagged, REML = TRUE
+)
+summary(rsv_model)
+
+flu_model = lmer(
+  flu ~ rsv + RSV_1 + RSV_2 + RSV_3 + RSV_4 + RSV_5 + RSV_6 +
+    sin_annual + cos_annual + sin_semiannual + cos_semiannual +
+    (1| state) + (1| season:state),
+  data = nssp_full_lagged, REML = TRUE
+)
+summary(flu_model)
+
+# If betas of the lagged flu predictors are positive and significant in the model that predicts rsv using flu, this suggests Flu precedes RSV
+summary(model_rsv_flu)
+ccf(nssp_full_lagged$rsv,
+    nssp_full_lagged$flu,
+    lag.max = 8,
+    plot = TRUE)
+
+# If betas of the lagged rsv predictors are positive and signfiicant in the model that predicts flu using rsv, this suggests RSV precedes flu
+summary(model_flu_rsv)
+
+# Based on these coefficients RSV precedes flu at 2 and 4-week intervals
+
+
+# Cross correlation heatmap
+
+lags <- 0:6
+cor_matrix <- sapply(lags, function(l)
+  cor(nssp_full_lagged$flu, lag(nssp_full_lagged$rsv, l), use = "complete.obs"))
+cor_df <- data.frame(Lag = lags, Correlation = cor_matrix)
+
+# Create a big lagged correlation table for each state per season
+nssp_full_lagged %>% select(
+  week_end,
+  state,
+  flu_rescaled,
+  ili_rescaled,
+  contains("RSV", ignore.case = FALSE),
+  contains("FLU", ignore.case = FALSE)
+) %>%
+  filter(state == "Arizona")
+
+nssp_corrs_flu_lag = nssp_full_lagged %>%
+  group_by(state) %>%
+  summarise(across(
+    starts_with("FLU_", ignore.case = FALSE),
+    ~ cor(.x, rsv_rescaled, use = "pairwise.complete.obs"),
+    .names = "cor_{.col}"
+  )) %>%
+  pivot_longer(
+    cols = starts_with("cor_"),
+    names_prefix = "cor_",
+    names_to = "Flu_Lag",
+    values_to = "correlation"
+  ) %>%
+  mutate(state = factor(state, levels = sort(unique(state))))  # Order states alphabetically
+
+nssp_corrs_rsv_lag = nssp_full_lagged %>%
+  group_by(state) %>%
+  summarise(across(
+    starts_with("RSV_", ignore.case = FALSE),
+    ~ cor(.x, flu_rescaled, use = "pairwise.complete.obs"),
+    .names = "cor_{.col}"
+  )) %>%
+  pivot_longer(
+    cols = starts_with("cor_"),
+    names_prefix = "cor_",
+    names_to = "RSV_Lag",
+    values_to = "correlation"
+  ) %>%
+  mutate(state = factor(state, levels = sort(unique(state))))  # Order states alphabetically
+
+# Correlation table between RSV and lagged flu data
+ggplot(nssp_corrs_flu_lag, aes(
+  x = Flu_Lag,
+  y = factor(state, levels = sort(unique(state), decreasing = TRUE)),
+  fill = correlation
+)) +
+  geom_tile(linewidth = 10) +
+  geom_text(aes(label = round(correlation, 2)), color = "black", size = 4) +  # Adds correlation values
+  scale_fill_gradient2(
+    low = "blue",
+    mid = "white",
+    high = "red",
+    midpoint = 0
+  ) +
+  labs(title = "Correlation between RSV and Lagged Flu Data",
+       x = "RSV Lag",
+       y = "State",
+       fill = "Correlation") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+ggsave(filename = "~/Documents/Projects/rsv_peak_timing/figures/nssp_rsv_lagged_flu_corrs.png", height = 8, width = 10, units = "in", bg = "white")
+
+## Correlation table between flu and lagged RSV
+ggplot(nssp_corrs_rsv_lag, aes(
+  x = RSV_Lag,
+  y = factor(state, levels = sort(unique(state), decreasing = TRUE)),
+  fill = correlation
+)) +
+  geom_tile(linewidth = 10) +
+  geom_text(aes(label = round(correlation, 2)), color = "black", size = 4) +  # Adds correlation values
+  scale_fill_gradient2(
+    low = "blue",
+    mid = "white",
+    high = "red",
+    midpoint = 0
+  ) +
+  labs(title = "Correlation between Flu and Lagged RSV Variables",
+       x = "RSV Lag",
+       y = "State",
+       fill = "Correlation") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+ggsave(filename = "~/Documents/Projects/rsv_peak_timing/figures/nssp_flu_lagged_rsv_corrs.png", height = 8, width = 10, units = "in", bg = "white")
+
+cor(nssp_full_lagged$flu_rescaled, nssp_full_lagged$RSV_1)
+cor(nssp_full_lagged$flu_rescaled, nssp_full_lagged$RSV_2)
+cor(nssp_full_lagged$flu_rescaled, nssp_full_lagged$RSV_3)
+cor(nssp_full_lagged$flu_rescaled, nssp_full_lagged$RSV_4)
+
+cor(nssp_full_lagged$rsv_rescaled, nssp_full_lagged$FLU_1)
+cor(nssp_full_lagged$rsv_rescaled, nssp_full_lagged$FLU_2)
+cor(nssp_full_lagged$rsv_rescaled, nssp_full_lagged$FLU_3)
+cor(nssp_full_lagged$rsv_rescaled, nssp_full_lagged$FLU_4)
+
+
+# Plot heatmap
+ggplot(cor_df, aes(x = Lag, y = 1, fill = Correlation)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "blue",
+                       high = "red",
+                       mid = "white") +
+  labs(title = "Heatmap of RSV vs. Flu Correlations",
+       x = "Lag (Weeks)",
+       y = "",
+       fill = "Correlation") +
+  theme_minimal()
