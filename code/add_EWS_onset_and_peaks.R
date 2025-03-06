@@ -7,7 +7,8 @@
 ##
 ## Date Created: 2025-03-03
 ##
-## Last Updated: 2025-03-03
+## Last Updated: 2025-03-05
+## Updated with data from Feb 2025
 ## -----------------------------------------------------------------------------
 
 ## Load packages
@@ -17,7 +18,7 @@ library(ggh4x)
 library(patchwork)
 
 ## Load NSSP data
-nssp = read_csv(file = "data/nssp_all_years.csv", show_col_types = FALSE)
+nssp = read_csv(file = "data/processed/nssp_all_years_030425.csv", show_col_types = FALSE)
 
 ## Test to see if we can regenerate the indivdual season plots from the individual years
 nssp %>%
@@ -90,17 +91,18 @@ rsv_onsets = rsv_onsets %>%
 
 flu_onsets = flu_onsets %>% select(state, season, flu_onset, flu_end)
 
-flu_onsets = flu_onsets %>% slice(-c(8, 133))
-
 rsv_onsets = rsv_onsets %>% select(state, season, rsv_onset, rsv_end)
 
-rsv_onsets = rsv_onsets %>% slice(-98)
-
-onsets = flu_onsets %>% left_join(rsv_onsets, by = c("state", "season"))
+onsets = full_join(flu_onsets, rsv_onsets, by = c("state", "season")) %>%
+  mutate(date_diff = abs(as.numeric(difftime(flu_onset, rsv_onset, units = "days")))) %>%
+  group_by(state, season, flu_onset, flu_end) %>%
+  slice_min(date_diff, n = 1) %>%  # Keep the closest RSV onset for each flu onset
+  ungroup() %>%
+  select(-date_diff)
 
 onsets = onsets %>% select(state, season, flu_onset, flu_end, rsv_onset, rsv_end)
 
-write_csv(onsets, file = "data/onsets.csv")
+write_csv(onsets, file = "data/onsets_03052025.csv")
 
 ## Peaks ----
 
@@ -156,7 +158,7 @@ onsets = onsets %>% mutate(weeks_diff = ifelse(is.na(rsv_onset), NA, as.numeric(
 
 ### As a histogram ----
 onsets %>%
-  drop_na() %>% # Includes only 106/150 seasons
+  drop_na() %>% # Includes only 111/150 seasons
   ggplot(aes(x = weeks_diff)) +
   geom_histogram(binwidth = 2) +
   labs(x = "Difference (weeks)", y = "Count") +
@@ -168,20 +170,6 @@ onsets %>%
   ggplot(aes(x = weeks_diff)) +
   geom_boxplot(notch = TRUE) +
   labs(x = "Difference (weeks)", y = "Count") +
-  theme_minimal()
-
-onsets$cat = "Onsets"
-peaks_shortest$cat = "Peaks"
-
-onsets_plot = onsets %>% select(state, season, cat, weeks_diff)
-peaks_plot = peaks_shortest %>% select(state, season, cat, weeks_diff)
-
-plot_onsets_peaks = bind_rows(onsets_plot, peaks_plot)
-
-plot_onsets_peaks %>%
-  ggplot(aes(x = weeks_diff, y = cat))+
-  geom_boxplot(notch = TRUE) +
-  labs(x= "Difference (weeks)", y = "Data") +
   theme_minimal()
 
 ## Using peaks
@@ -201,6 +189,24 @@ peaks_shortest %>%
 
 median(onsets$weeks_diff, na.rm = TRUE)
 mean(onsets$weeks_diff, na.rm = TRUE)
+# 1 week diff in onsets
 
 median(peaks_shortest$weeks_diff, na.rm = TRUE)
 mean(peaks_shortest$weeks_diff, na.rm = TRUE)
+# 2 week diff in peaks
+
+# Grouped boxplot
+
+onsets$cat = "Onsets"
+peaks_shortest$cat = "Peaks"
+
+onsets_plot = onsets %>% select(state, season, cat, weeks_diff)
+peaks_plot = peaks_shortest %>% select(state, season, cat, weeks_diff)
+
+plot_onsets_peaks = bind_rows(onsets_plot, peaks_plot)
+
+plot_onsets_peaks %>%
+  ggplot(aes(x = weeks_diff, y = cat))+
+  geom_boxplot(notch = TRUE) +
+  labs(x= "Difference (weeks)", y = "Data") +
+  theme_minimal()

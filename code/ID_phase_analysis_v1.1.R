@@ -10,6 +10,7 @@
 ## Last Updated: 2025-03-04
 ##
 ## Version: 1.1
+## Add analysis including Feb 2025 data
 ##
 ## -----------------------------------------------------------------------------
 
@@ -36,12 +37,12 @@ setwd("~/Documents/Projects/rsv_peak_timing")
 
 ## Load NSSP data
 dat = read_csv(
-  "data/NSSP/NSSP_Emergency_Department_Visit_Trajectories_by_State_and_Sub_State_Regions-_COVID-19__Flu__RSV__Combined___20250129.csv"
+  "data/NSSP/nssp_full_02282025.csv"
 )
 
 ## Load ILI data and do some data management
 ## ILI data - need data from 21 - 23
-ili_data = read_csv("data/ILInet/ILINet_state_2025-01-18.csv",
+ili_data = read_csv("data/ILInet/ILINet_state_2025-02-22.csv",
                     na = "X",
                     skip = 1)
 names(ili_data) = c(
@@ -63,10 +64,11 @@ names(ili_data) = c(
 )
 
 ili_data_with_dates = ili_data %>%
-  filter(year %in% 2016:2025) %>%
+  filter(year %in% 2022:2025) %>%
   mutate(week_end = as_date(MMWRweek2Date(year, epiweek) + 6)) %>%
   select(region, year, epiweek, week_end, unweighted_ili, ilitotal) %>%
   rename(state = region)
+
 
 dat = dat %>% filter(county == "All") %>% select(
   week_end,
@@ -322,7 +324,7 @@ nssp_signals_24_25 %>%
     legend.title = element_blank(),
     legend.position = 'right'
   )
-# ggsave(file = "figures/nssp_24_25.png", width = 16, height = 10, units = "in", bg = "white")
+ggsave(file = "figures/nssp_24_25.png", width = 16, height = 10, units = "in", bg = "white")
 
 # Generating the 3x3 panel Figure 1. Show the seasonal changes for MD, NY, and TX
 
@@ -367,7 +369,8 @@ find_states_with_early_rsv_peak = function(data) {
       .groups = "drop"
     ) %>%
     filter(max_rsv_date < max_flu_date) %>%
-    select(state, max_rsv_date, max_flu_date)
+    select(state, max_rsv_date, max_flu_date) %>%
+     nrow()
   )
 }
 
@@ -381,7 +384,8 @@ find_states_with_concurrent_rsv_peak = function(data) {
         .groups = "drop"
       ) %>%
       filter(max_rsv_date == max_flu_date) %>%
-      select(state, max_rsv_date, max_flu_date)
+      select(state, max_rsv_date, max_flu_date) %>%
+      nrow()
   )
 }
 
@@ -395,7 +399,8 @@ find_states_with_early_flu_peak = function(data) {
         .groups = "drop"
       ) %>%
       filter(max_rsv_date > max_flu_date) %>%
-      select(state, max_rsv_date, max_flu_date)
+      select(state, max_rsv_date, max_flu_date) %>%
+      nrow()
   )
 }
 
@@ -403,18 +408,20 @@ find_states_with_early_flu_peak = function(data) {
 # Flu before RSV
 find_states_with_early_flu_peak(nssp_signals_22_23) #2
 find_states_with_early_flu_peak(nssp_signals_23_24) #9
-find_states_with_early_flu_peak(nssp_signals_24_25) #15
-# 26
+find_states_with_early_flu_peak(nssp_signals_24_25) #8
+# 19
 
 find_states_with_early_rsv_peak(nssp_signals_22_23) #45
 find_states_with_early_rsv_peak(nssp_signals_23_24) #35
-find_states_with_early_rsv_peak(nssp_signals_24_25) #23
-# 103
+find_states_with_early_rsv_peak(nssp_signals_24_25) #36
+# 126
+
+126/150
 
 find_states_with_concurrent_rsv_peak(nssp_signals_22_23) #3
 find_states_with_concurrent_rsv_peak(nssp_signals_23_24) #6
-find_states_with_concurrent_rsv_peak(nssp_signals_24_25) #12
-# 21
+find_states_with_concurrent_rsv_peak(nssp_signals_24_25) #6
+# 15
 
 all_states <- c(
   "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado",
@@ -467,6 +474,7 @@ nssp_signals_22_23 %>%
            max_ili = max(max_ili_date))
 # rsv: min Oct 1, max_rsv Dec 24
 # flu: min Nov 5 max Dec 31
+# ili: min Nov 5 max Dec 31
 
 nssp_signals_23_24  %>%
   group_by(state) %>%
@@ -500,6 +508,10 @@ nssp_signals_24_25  %>%
             max_flu = max(max_flu_date),
             min_ili = min(max_ili_date),
             max_ili = max(max_ili_date))
+# RSV: min June 1, max Feb 15
+# Flu: min June 15, max Feb 15
+# ILI: min Sep 28, max Feb 15
+
 # In the current season, this method does not really work. At least for now,
 # the data suggests that flu and RSV are currently peaking
 
@@ -524,6 +536,8 @@ nssp_full = nssp_full %>%
     vir_rhs = covid + flu + rsv,
     vir_rescaled_rhs = covid_rescaled + flu_rescaled + rsv_rescaled
   )
+
+
 
 # Find optimal lag for ILI and the regression rhs
 ccf(nssp_full$vir_rhs,
@@ -633,7 +647,6 @@ ccf(nssp_full_lagged$rsv,
 summary(model_flu_rsv)
 
 # Based on these coefficients RSV precedes flu at 2 and 4-week intervals
-
 
 # Cross correlation heatmap
 
@@ -749,3 +762,9 @@ ggplot(cor_df, aes(x = Lag, y = 1, fill = Correlation)) +
        y = "",
        fill = "Correlation") +
   theme_minimal()
+
+nssp_full_ = nssp_full %>% select(week_end, state, season, ili_rescaled, contains('times_coef'))
+
+# Saving the data for use in EWS
+write_csv(nssp_full_, file = "data/processed/nssp_all_years_030425.csv")
+
