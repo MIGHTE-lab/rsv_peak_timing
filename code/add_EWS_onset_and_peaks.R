@@ -7,8 +7,8 @@
 ##
 ## Date Created: 2025-03-03
 ##
-## Last Updated: 2025-03-05
-## Updated with data from Feb 2025
+## Last Updated: 2025-03-10
+##
 ## -----------------------------------------------------------------------------
 
 ## Load packages
@@ -191,8 +191,14 @@ median(onsets$weeks_diff, na.rm = TRUE)
 mean(onsets$weeks_diff, na.rm = TRUE)
 # 1 week diff in onsets
 
+# Calculate the 95% percentile range
+quantile(onsets$weeks_diff, probs = c(0.025, 0.975), na.rm = TRUE)
+
+# Calculate the 95% percentile range of peak difference
 median(peaks_shortest$weeks_diff, na.rm = TRUE)
 mean(peaks_shortest$weeks_diff, na.rm = TRUE)
+quantile(peaks_shortest$weeks_diff, probs = c(0.025, 0.975), na.rm = TRUE)
+
 # 2 week diff in peaks
 
 # Grouped boxplot
@@ -208,5 +214,6 @@ plot_onsets_peaks = bind_rows(onsets_plot, peaks_plot)
 plot_onsets_peaks %>%
   ggplot(aes(x = weeks_diff, y = cat))+
   geom_boxplot(notch = TRUE) +
-  labs(x= "Difference (weeks)", y = "Data") +
-  theme_minimal()
+  labs(x= "Difference (weeks)", y = "") +
+  envalysis::theme_publish()
+ggsave(filename = "figures/fig2_v1.png", width = 10, height = 8, units = "in", bg = "white")
