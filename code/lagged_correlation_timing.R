@@ -7,7 +7,10 @@
 ##
 ## Date Created: 2025-03-11
 ##
-## Last Updated: 2025-03-13
+## Last Updated: 2025-03-20
+##
+## Version Update Notes: based on narrative, change correlation comparison
+## to using flu and lagged rsv
 ## -----------------------------------------------------------------------------
 
 # 1. Setup ----
@@ -21,25 +24,38 @@ library(purrr)
 dat = read_csv("data/processed/nssp_all_years.csv")
 
 dat_cor = dat %>% select(week_end, state, season, contains("rescaled")) %>%
-  mutate(flu_lead1 = lead(flu_rescaled, 1),
-         flu_lead2 = lead(flu_rescaled, 2),
-         flu_lead3 = lead(flu_rescaled, 3),
-         flu_lead4 = lead(flu_rescaled, 4),
-         flu_lead5 = lead(flu_rescaled, 5))
+  mutate(rsv_lag1 = lag(rsv_rescaled, 1),
+         rsv_lag2 = lag(rsv_rescaled, 2),
+         rsv_lag3 = lag(rsv_rescaled, 3),
+         rsv_lag4 = lag(rsv_rescaled, 4),
+         rsv_lag5 = lag(rsv_rescaled, 5),
+         cov_lag1 = lag(covid_rescaled, 1),
+         cov_lag2 = lag(covid_rescaled, 2),
+         cov_lag3 = lag(covid_rescaled, 3),
+         cov_lag4 = lag(covid_rescaled, 4),
+         cov_lag5 = lag(covid_rescaled, 5),
+         cov_lead1 = lead(covid_rescaled, 1),
+         cov_lead2 = lead(covid_rescaled, 2),
+         cov_lead3 = lead(covid_rescaled, 3),
+         cov_lead4 = lead(covid_rescaled, 4),
+         cov_lead5 = lead(covid_rescaled, 5))
+
+dat_cor_fig1 = dat_cor %>%
+  filter(state %in% c("Maryland", "Texas", "New York"))
+
+write_csv(dat_cor_fig1, file = "data/data_cor_fig1.csv")
 
 compute_correlations = function(season_data) {
   cor_matrix = season_data %>%
-    select(state, rsv_rescaled, flu_rescaled, flu_lead1:flu_lead5) %>%  # Select necessary columns
+    rename(rsv_lag0 = rsv_rescaled) %>%
+    select(state, flu_rescaled, rsv_lag0, rsv_lag1:rsv_lag5) %>%  # Select necessary columns
     group_by(state) %>%
-    summarise(across(flu_rescaled:flu_lead5,
-                     ~cor(rsv_rescaled, ., use = "pairwise.complete.obs"))) %>%  # Compute correlations with rsv_rescaled
-    pivot_longer(cols = flu_rescaled:flu_lead5, names_to = "Flu_Variable", values_to = "Correlation")
+    summarise(across(rsv_lag0:rsv_lag5,
+                     ~cor(flu_rescaled, ., use = "pairwise.complete.obs"))) %>%  # Compute correlations with flu_rescaled
+    pivot_longer(cols = rsv_lag0:rsv_lag5, names_to = "RSV_Variable", values_to = "Correlation")
 
   return(cor_matrix)
 }
-
-# List of seasons
-seasons = c("22-23", "23-24", "24-25")
 
 nssp_22_23 = dat_cor %>% filter(season == "22-23")
 nssp_23_24 = dat_cor %>% filter(season == "23-24")
@@ -49,59 +65,487 @@ cor_list_22_23 = compute_correlations(nssp_22_23)
 cor_list_23_24 = compute_correlations(nssp_23_24)
 cor_list_24_25 = compute_correlations(nssp_24_25)
 
+lag_levels = c("rsv_lag5", "rsv_lag4", "rsv_lag3", "rsv_lag2", "rsv_lag1", "rsv_lag0")
+rsv_labels = c("Lag 5", "Lag 4", "Lag 3", "Lag 2", "Lag 1", "Lag 0")
+
 # 2. Correlation heatmaps ----
 
-## 22-23 season
+# Flu vs. RSV
+
+# # 22-23 season (old version)
+# cor_list_22_23 = cor_list_22_23 %>%
+#   mutate(state = factor(state, levels = sort(unique(state), decreasing = TRUE)))
+#
+# ggplot(cor_list_22_23, aes(x = factor(RSV_Variable, levels = c("rsv_lag0", "rsv_lag1", "rsv_lag2", "rsv_lag3", "rsv_lag4", "rsv_lag5")),
+#                            y = state, fill = Correlation)) +
+#   geom_tile() +
+#   geom_text(aes(label = round(Correlation, 2)), color = "black", size = 3) +  # Add correlation values
+#   scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0) +
+#   theme_minimal() +
+#   labs(title = "Correlation: Flu vs RSV (22-23)",
+#        x = "RSV Variables (Lagged & Unlagged)", y = "State") +
+#   theme(axis.text.x = element_text(angle = 45, hjust = 1))
+# # ggsave(file = "figures/cor_matrix_flu_lead_22_23.png", width = 9, height = 10, units = "in", bg = "white")
+#
+# rsv_order = c("rsv_lag0", "rsv_lag1", "rsv_lag2", "rsv_lag3", "rsv_lag4", "rsv_lag5")
+#
+# ## 22-23 season ordered by correlation
+# ordered_states = cor_list_22_23 %>%
+#   filter(RSV_Variable == "rsv_lag0") %>%
+#   arrange(Correlation) %>%
+#   pull(state)
+#
+# # Iteratively reorder the states for the remaining columns
+# for (rsv_var in rsv_order[-1]) {
+#   new_order = cor_list_22_23 %>%
+#     filter(RSV_Variable == rsv_var) %>%
+#     arrange(Correlation) %>%
+#     pull(state)
+#
+#   # Preserve previous order while inserting newly ranked states
+#   ordered_states = c(intersect(ordered_states, new_order), setdiff(new_order, ordered_states))
+# }
+#
+# rsv_labels = c("Lag 0", "Lag 1", "Lag 2", "Lag 3", "Lag 4", "Lag 5")
+#
+# # Apply the final order to the dataset
+# cor_list_22_23 = cor_list_22_23 %>%
+#   mutate(state = factor(state, levels = ordered_states),  # Reverse to place highest at the top
+#          RSV_Variable = factor(RSV_Variable, levels = rsv_order))  # Keep original order for mapping
+#
+# # Generate heatmap with updated x-axis labels
+# ggplot(cor_list_22_23, aes(x = RSV_Variable, y = state, fill = Correlation)) +
+#   geom_tile() +
+#   geom_text(aes(label = round(Correlation, 2)), color = "black", size = 3) +  # Add correlation values
+#   scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0) +
+#   scale_x_discrete(labels = rsv_labels) +  # Update x-axis labels
+#   theme_minimal() +
+#   labs(title = "Correlation: Flu vs RSV (22-23)",
+#        x = "RSV Lag", y = "State") +
+#   theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+## Updated version with rank ordering by lag and correlation value
+
+## 22-23 season ----
+# First, identify the optimal (strongest) lag for each state
+optimal_lags_22_23 = cor_list_22_23 %>%
+  group_by(state) %>%
+  slice_max(order_by = Correlation, n = 1, with_ties = FALSE) %>%
+  ungroup()
+
+# Sort the optimal lags from earliest data to latest
+optimal_lags_22_23 = optimal_lags_22_23 %>%
+  mutate(RSV_Variable = factor(RSV_Variable,
+                               levels = c("rsv_lag5", "rsv_lag4", "rsv_lag3", "rsv_lag2", "rsv_lag1", "rsv_lag0"))) %>%
+  arrange(RSV_Variable, desc(Correlation)) %>%
+  mutate(state = factor(state, levels = unique(state)))
+
+optimal_lags_22_23 = optimal_lags_22_23 %>%
+  mutate(RSV_Variable = factor(RSV_Variable, levels = lag_levels)) %>%
+  arrange(RSV_Variable, desc(Correlation))
+
+# Extract state order from optimal_lags
+state_order_22_23 = optimal_lags_22_23 %>%
+  pull(state)
+
+state_order_22_23 = rev(state_order_22_23)
+
+# Update your cor_list_22_23 data to set the factor levels for both state and RSV_Variable
 cor_list_22_23 = cor_list_22_23 %>%
-  mutate(state = factor(state, levels = sort(unique(state), decreasing = TRUE)))
+  mutate(state = factor(state, levels = state_order_22_23),
+         RSV_Variable = factor(RSV_Variable, levels = lag_levels))
 
-ggplot(cor_list_22_23, aes(x = factor(Flu_Variable, levels = c("flu_rescaled", "flu_lead1", "flu_lead2", "flu_lead3", "flu_lead4", "flu_lead5")),
-                           y = state, fill = Correlation)) +
+# Now your ggplot call will use the ordering from optimal_lags
+ggplot(cor_list_22_23, aes(x = RSV_Variable, y = state, fill = Correlation)) +
   geom_tile() +
-  geom_text(aes(label = round(Correlation, 2)), color = "black", size = 3) +  # Add correlation values
+  geom_text(aes(label = round(Correlation, 2)), color = "black", size = 3) +
   scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0) +
+  scale_x_discrete(labels = rsv_labels) +
   theme_minimal() +
-  labs(title = "Correlation: RSV vs Flu Variables (22-23)",
-       x = "Flu Variables (Lagged & Unlagged)", y = "State") +
+  labs(title = "Correlations of Flu and Lagged RSV Signals (22-23)",
+       x = "RSV Lag", y = "State") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
-ggsave(file = "figures/cor_matrix_flu_lead_22_23.png", width = 9, height = 10, units = "in", bg = "white")
+ggsave(file = "figures/manuscript_figures/correlation_matrices/cor_matrix_flu_rsv_22_23.png",
+       height = 9, width = 10, units = "in", bg = "white")
 
-## 23-24 season
+## 23-24 season ----
+# First, identify the optimal (strongest) lag for each state
+optimal_lags_23_24 = cor_list_23_24 %>%
+  group_by(state) %>%
+  slice_max(order_by = Correlation, n = 1, with_ties = FALSE) %>%
+  ungroup()
+
+# Sort the optimal lags from earliest data to latest
+optimal_lags_23_24 = optimal_lags_23_24 %>%
+  mutate(RSV_Variable = factor(RSV_Variable,
+                               levels = c("rsv_lag5", "rsv_lag4", "rsv_lag3", "rsv_lag2", "rsv_lag1", "rsv_lag0"))) %>%
+  arrange(RSV_Variable, desc(Correlation)) %>%
+  mutate(state = factor(state, levels = unique(state)))
+lag_levels = c("rsv_lag5", "rsv_lag4", "rsv_lag3", "rsv_lag2", "rsv_lag1", "rsv_lag0")
+
+optimal_lags_23_24 = optimal_lags_23_24 %>%
+  mutate(RSV_Variable = factor(RSV_Variable, levels = lag_levels)) %>%
+  arrange(RSV_Variable, desc(Correlation))
+
+# Extract state order from optimal_lags
+state_order_23_24 = optimal_lags_23_24 %>%
+  pull(state)
+
+state_order_23_24 = rev(state_order_23_24)
+
+# Update your cor_list_22_23 data to set the factor levels for both state and RSV_Variable
 cor_list_23_24 = cor_list_23_24 %>%
-  mutate(state = factor(state, levels = sort(unique(state), decreasing = TRUE)))
+  mutate(state = factor(state, levels = state_order_23_24),
+         RSV_Variable = factor(RSV_Variable, levels = lag_levels))
 
-ggplot(cor_list_23_24, aes(x = factor(Flu_Variable, levels = c("flu_rescaled", "flu_lead1", "flu_lead2", "flu_lead3", "flu_lead4", "flu_lead5")),
-                           y = state, fill = Correlation)) +
+# Now your ggplot call will use the ordering from optimal_lags
+ggplot(cor_list_23_24, aes(x = RSV_Variable, y = state, fill = Correlation)) +
+  geom_tile() +
+  geom_text(aes(label = round(Correlation, 2)), color = "black", size = 3) +
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0) +
+  scale_x_discrete(labels = rsv_labels) +
+  theme_minimal() +
+  labs(title = "Correlations of Flu and Lagged RSV Signals (23-24)",
+       x = "RSV Lag", y = "State") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+ggsave(file = "figures/manuscript_figures/correlation_matrices/cor_matrix_flu_rsv_23_24.png",
+       height = 9, width = 10, units = "in", bg = "white")
+
+## 24-25 season ----
+# First, identify the optimal (strongest) lag for each state
+optimal_lags_24_25 = cor_list_24_25 %>%
+  group_by(state) %>%
+  slice_max(order_by = Correlation, n = 1, with_ties = FALSE) %>%
+  ungroup()
+
+# Sort the optimal lags from earliest data to latest
+optimal_lags_24_25 = optimal_lags_24_25 %>%
+  mutate(RSV_Variable = factor(RSV_Variable,
+                               levels = c("rsv_lag5", "rsv_lag4", "rsv_lag3", "rsv_lag2", "rsv_lag1", "rsv_lag0"))) %>%
+  arrange(RSV_Variable, desc(Correlation)) %>%
+  mutate(state = factor(state, levels = unique(state)))
+
+optimal_lags_24_25 = optimal_lags_24_25 %>%
+  mutate(RSV_Variable = factor(RSV_Variable, levels = lag_levels)) %>%
+  arrange(RSV_Variable, desc(Correlation))
+
+# Extract state order from optimal_lags
+state_order_24_25 = optimal_lags_24_25 %>%
+  pull(state)
+
+state_order_24_25 = rev(state_order_24_25)
+
+# Update data data to set the factor levels for both state and RSV_Variable
+cor_list_24_25 = cor_list_24_25 %>%
+  mutate(state = factor(state, levels = state_order_24_25),
+         RSV_Variable = factor(RSV_Variable, levels = lag_levels))
+
+# Now your ggplot call will use the ordering from optimal_lags
+ggplot(cor_list_24_25, aes(x = RSV_Variable, y = state, fill = Correlation)) +
+  geom_tile() +
+  geom_text(aes(label = round(Correlation, 2)), color = "black", size = 3) +
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0) +
+  scale_x_discrete(labels = rsv_labels) +
+  theme_minimal() +
+  labs(title = "Correlations of Flu and Lagged RSV Signals (24-25)",
+       x = "RSV Lag", y = "State") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+ggsave(file = "figures/manuscript_figures/correlation_matrices/cor_matrix_flu_rsv_24_25.png",
+       height = 9, width = 10, units = "in", bg = "white")
+
+# ## 2.1.3 23-24 season (old version) -----
+# cor_list_23_24 = cor_list_23_24 %>%
+#   mutate(state = factor(state, levels = sort(unique(state), decreasing = TRUE)))
+
+# ggplot(cor_list_23_24, aes(x = factor(Flu_Variable, levels = c("flu_rescaled", "flu_lead1", "flu_lead2", "flu_lead3", "flu_lead4", "flu_lead5")),
+#                            y = state, fill = Correlation)) +
+#   geom_tile() +
+#   geom_text(aes(label = round(Correlation, 2)), color = "black", size = 3) +  # Add correlation values
+#   scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0) +
+#   theme_minimal() +
+#   labs(title = "Correlation: RSV vs Flu Variables (23-24)",
+#        x = "Flu Variables (Lagged & Unlagged)", y = "State") +
+#   theme(axis.text.x = element_text(angle = 45, hjust = 1))
+# ggsave(file = "figures/cor_matrix_flu_lead_23_24.png", width = 9, height = 10, units = "in", bg = "white")
+
+## 2.1.4. Version 2 for 23-24 season ----
+# Initialize state order using rsv_lag0
+ordered_states = cor_list_23_24 %>%
+  filter(RSV_Variable == "rsv_lag0") %>%
+  arrange(Correlation) %>%
+  pull(state)
+
+# Iteratively reorder the states for the remaining columns
+for (rsv_var in rsv_order[-1]) {
+  new_order = cor_list_23_24 %>%
+    filter(RSV_Variable == rsv_var) %>%
+    arrange(Correlation) %>%
+    pull(state)
+
+  # Preserve previous order while inserting newly ranked states
+  ordered_states = c(intersect(ordered_states, new_order), setdiff(new_order, ordered_states))
+}
+
+# Apply the final order to the dataset
+cor_list_23_24 = cor_list_23_24 %>%
+  mutate(state = factor(state, levels = ordered_states),  # Reverse to place highest at the top
+         RSV_Variable = factor(RSV_Variable, levels = rsv_order))  # Keep original order for mapping
+
+rsv_labels = c("Lag 5", "Lag 4", "Lag 3", "Lag 2", "Lag 1", "Lag 0")
+
+# Generate heatmap with updated x-axis labels
+ggplot(cor_list_23_24, aes(x = RSV_Variable, y = state, fill = Correlation)) +
   geom_tile() +
   geom_text(aes(label = round(Correlation, 2)), color = "black", size = 3) +  # Add correlation values
   scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0) +
+  scale_x_discrete(labels = rsv_labels) +  # Update x-axis labels
   theme_minimal() +
-  labs(title = "Correlation: RSV vs Flu Variables (23-24)",
-       x = "Flu Variables (Lagged & Unlagged)", y = "State") +
+  labs(title = "Correlation: Flu vs RSV (23-24)",
+       x = "RSV Lag", y = "State") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
-ggsave(file = "figures/cor_matrix_flu_lead_23_24.png", width = 9, height = 10, units = "in", bg = "white")
+ggsave(file = "figures/cor_matrix_rsv_lag_23_24.png", height = 9, width = 7, units = "in", bg = "white")
 
-## 24-25 season
-cor_list_24_25 = cor_list_24_25 %>%
-  mutate(state = factor(state, levels = sort(unique(state), decreasing = TRUE)))
-cor_list_24_25
+## Version 3 (23-24) with optimal lags by state
+# First, identify the optimal (strongest) lag for each state
+optimal_lags = cor_list_23_24 %>%
+  group_by(state) %>%
+  slice_max(order_by = Correlation, n = 1, with_ties = FALSE) %>%
+  ungroup()
 
-ggplot(cor_list_24_25, aes(x = factor(Flu_Variable, levels = c("flu_lead0", "flu_lead1", "flu_lead2", "flu_lead3", "flu_lead4", "flu_lead5")),
-                           y = state, fill = cor_no_trunc)) +
+# Sort the optimal lags from earliest data to latest
+optimal_lags = optimal_lags %>%
+  mutate(RSV_Variable = factor(RSV_Variable,
+                               levels = c("rsv_lag5", "rsv_lag4", "rsv_lag3", "rsv_lag2", "rsv_lag1", "rsv_lag0"))) %>%
+  arrange(RSV_Variable, desc(Correlation)) %>%
+  mutate(state = factor(state, levels = unique(state)))
+lag_levels = c("rsv_lag5", "rsv_lag4", "rsv_lag3", "rsv_lag2", "rsv_lag1", "rsv_lag0")
+
+optimal_lags = optimal_lags %>%
+  mutate(RSV_Variable = factor(RSV_Variable, levels = lag_levels)) %>%
+  arrange(RSV_Variable, desc(Correlation))
+
+# Extract state order from optimal_lags
+state_order = optimal_lags %>%
+  pull(state)
+
+state_order = rev(state_order)
+
+# Update your cor_list_22_23 data to set the factor levels for both state and RSV_Variable
+cor_list_22_23 = cor_list_22_23 %>%
+  mutate(state = factor(state, levels = state_order),
+         RSV_Variable = factor(RSV_Variable, levels = lag_levels))
+
+rsv_labels = c("Lag 5", "Lag 4", "Lag 3", "Lag 2", "Lag 1", "Lag 0")
+
+# Now your ggplot call will use the ordering from optimal_lags
+ggplot(cor_list_22_23, aes(x = RSV_Variable, y = state, fill = Correlation)) +
   geom_tile() +
-  geom_text(aes(label = round(cor_no_trunc, 2)), color = "black", size = 3) +  # Add correlation values
+  geom_text(aes(label = round(Correlation, 2)), color = "black", size = 3) +
   scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0) +
+  scale_x_discrete(labels = rsv_labels) +
   theme_minimal() +
-  labs(title = "Correlation: RSV vs Flu Variables (24-25), Full Data",
-       x = "Flu Variables (Lagged & Unlagged)", y = "State") +
+  labs(title = "Correlations of Flu and Lagged RSV Signals (22-23)",
+       x = "RSV Lag", y = "State") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
-ggsave(file = "figures/cor_matrix_flu_lead_24_25.png", width = 9, height = 10, units = "in", bg = "white")
+ggsave(file = "figures/manuscript_figures/correlation_matrices/cor_matrix_flu_rsv_22_23.png",
+       height = 9, width = 10, units = "in", bg = "white")
 
-dat_FL_22_23 = nssp_22_23 %>% filter(state == "Florida")
-cor(dat_FL_22_23$rsv_rescaled, dat_FL_22_23$flu_rescaled)
+# ## 2.1.5. 24-25 season ----
+# cor_list_24_25 = cor_list_24_25 %>%
+#   mutate(state = factor(state, levels = sort(unique(state), decreasing = TRUE)))
+# cor_list_24_25
+#
+# ggplot(cor_list_24_25, aes(x = factor(Flu_Variable, levels = c("flu_lead0", "flu_lead1", "flu_lead2", "flu_lead3", "flu_lead4", "flu_lead5")),
+#                            y = state, fill = cor_no_trunc)) +
+#   geom_tile() +
+#   geom_text(aes(label = round(cor_no_trunc, 2)), color = "black", size = 3) +  # Add correlation values
+#   scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0) +
+#   theme_minimal() +
+#   labs(title = "Correlation: RSV vs Flu Variables (24-25), Full Data",
+#        x = "Flu Variables (Lagged & Unlagged)", y = "State") +
+#   theme(axis.text.x = element_text(angle = 45, hjust = 1))
+# ggsave(file = "figures/cor_matrix_flu_lead_24_25.png", width = 9, height = 10, units = "in", bg = "white")
+#
+# dat_FL_22_23 = nssp_22_23 %>% filter(state == "Florida")
+# cor(dat_FL_22_23$rsv_rescaled, dat_FL_22_23$flu_rescaled)
+#
+# ccf(dat$flu_rescaled, dat$rsv_rescaled, lag.max = 5)
+#
+# ## 2.1.6. 24-25 season (ranked version) ----
+#
+# ordered_states = cor_list_24_25 %>%
+#   filter(RSV_Variable == "rsv_lag0") %>%
+#   arrange(Correlation) %>%
+#   pull(state)
+#
+# # Iteratively reorder the states for the remaining columns
+# for (rsv_var in rsv_order[-1]) {
+#   new_order = cor_list_24_25 %>%
+#     filter(RSV_Variable == rsv_var) %>%
+#     arrange(Correlation) %>%
+#     pull(state)
+#
+#   # Preserve previous order while inserting newly ranked states
+#   ordered_states = c(intersect(ordered_states, new_order), setdiff(new_order, ordered_states))
+# }
+#
+# # Apply the final order to the dataset
+# cor_list_24_25 = cor_list_24_25 %>%
+#   mutate(state = factor(state, levels = ordered_states),  # Reverse to place highest at the top
+#          RSV_Variable = factor(RSV_Variable, levels = rsv_order))  # Keep original order for mapping
+#
+# # Generate heatmap with updated x-axis labels
+# ggplot(cor_list_24_25, aes(x = RSV_Variable, y = state, fill = Correlation)) +
+#   geom_tile() +
+#   geom_text(aes(label = round(Correlation, 2)), color = "black", size = 3) +  # Add correlation values
+#   scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0) +
+#   scale_x_discrete(labels = rsv_labels) +  # Update x-axis labels
+#   theme_minimal() +
+#   labs(title = "Correlation: Flu vs RSV (24-25)",
+#        x = "RSV Lag", y = "State") +
+#   theme(axis.text.x = element_text(angle = 45, hjust = 1))
+# ggsave(file = "figures/cor_matrix_rsv_lag_24_25.png", height = 9, width = 7, units = "in", bg = "white")
 
-ccf(dat$flu_rescaled, dat$rsv_rescaled, lag.max = 5)
 
+# 2.2. Correlations between Flu and COVID ----
+# Since we are unsure about the seasonality of COVID, let's check both leads and lags
+compute_correlations_flu_cov = function(season_data) {
+  cor_matrix = season_data %>%
+    rename(cov_lag0 = covid_rescaled) %>%
+    select(state, flu_rescaled, cov_lag0, cov_lag1:cov_lag5, cov_lead1:cov_lead5) %>%  # Select necessary columns
+    group_by(state) %>%
+    summarise(across(cov_lag0:cov_lead5,
+                     ~cor(flu_rescaled, ., use = "pairwise.complete.obs"))) %>%  # Compute correlations between cov and flu
+    pivot_longer(cols = cov_lag0:cov_lead5, names_to = "COV_Variable", values_to = "Correlation")
+
+  return(cor_matrix)
+}
+
+# Compute the correlations between flu and lagged COVID
+cor_cov_flu_22_23 = compute_correlations_flu_cov(nssp_22_23)
+cor_cov_flu_23_24 = compute_correlations_flu_cov(nssp_23_24)
+cor_cov_flu_24_25 = compute_correlations_flu_cov(nssp_24_25)
+
+cov_order = c("cov_lag5", "cov_lag4", "cov_lag3", "cov_lag2", "cov_lag1", "cov_lag0", "cov_lead1", "cov_lead2", "cov_lead3", "cov_lead4", "cov_lead5")
+cov_labels = c("Lag 5", "Lag 4", "Lag 3", "Lag 2", "Lag 1", "Lag 0", "Lead 1", "Lead 2", "Lead 3", "Lead 4", "Lead 5")
+
+# Ordered heatmaps for COVID and Flu
+# 2.2.1. 22-23 season -----
+optimal_lag_flu_COVID_22_23 = cor_cov_flu_22_23 %>%
+  group_by(state) %>%
+  slice_max(order_by = Correlation, n = 1, with_ties = FALSE) %>%
+  ungroup()
+
+# Sort the optimal lags from earliest data to latest
+optimal_lag_flu_COVID_22_23 = optimal_lag_flu_COVID_22_23 %>%
+  mutate(COV_Variable = factor(COV_Variable,
+                               levels = cov_order)) %>%
+  arrange(COV_Variable, desc(Correlation)) %>%
+  mutate(state = factor(state, levels = unique(state)))
+
+optimal_lag_flu_COVID_22_23
+
+# Extract state order from optimal_lags
+state_order_flu_COVID_22_23 = optimal_lag_flu_COVID_22_23 %>%
+  pull(state)
+
+state_order_flu_COVID_22_23
+
+state_order_flu_COVID_22_23 = rev(state_order_flu_COVID_22_23)
+
+# Update data data to set the factor levels for both state and RSV_Variable
+cor_cov_flu_22_23 = cor_cov_flu_22_23 %>%
+  mutate(state = factor(state, levels = state_order_flu_COVID_22_23),
+         COV_Variable = factor(COV_Variable, levels = cov_order))
+
+
+# Generate heatmap with updated x-axis labels
+ggplot(cor_cov_flu_22_23, aes(x = COV_Variable, y = state, fill = Correlation)) +
+  geom_tile() +
+  geom_text(aes(label = round(Correlation, 2)), color = "black", size = 3) +  # Add correlation values
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0) +
+  scale_x_discrete(labels = cov_labels) +  # Update x-axis labels
+  theme_minimal() +
+  labs(title = "Correlation: Flu vs Shifted COVID Values (22-23)",
+       x = "", y = "State") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggsave(file = "figures/manuscript_figures/correlation_matrices/cor_matrix_covid_flu_22_23.png",  height = 8, width = 14, units = "in", bg = "white")
+
+## 2.2.2 23-24 season ----
+
+optimal_lag_flu_COVID_23_24 = cor_cov_flu_23_24 %>%
+  group_by(state) %>%
+  slice_max(order_by = Correlation, n = 1, with_ties = FALSE) %>%
+  ungroup()
+
+# Sort the optimal lags from earliest data to latest
+optimal_lag_flu_COVID_23_24 = optimal_lag_flu_COVID_23_24 %>%
+  mutate(COV_Variable = factor(COV_Variable,
+                               levels = cov_order)) %>%
+  arrange(COV_Variable, desc(Correlation)) %>%
+  mutate(state = factor(state, levels = unique(state)))
+
+# Extract state order from optimal_lags
+state_order_flu_COVID_23_24 = optimal_lag_flu_COVID_23_24 %>%
+  pull(state)
+
+state_order_flu_COVID_23_24 = rev(state_order_flu_COVID_23_24)
+
+# Update data data to set the factor levels for both state and RSV_Variable
+cor_cov_flu_23_24 = cor_cov_flu_23_24 %>%
+  mutate(state = factor(state, levels = state_order_flu_COVID_23_24),
+         COV_Variable = factor(COV_Variable, levels = cov_order))
+
+# Generate heatmap with updated x-axis labels
+ggplot(cor_cov_flu_23_24, aes(x = COV_Variable, y = state, fill = Correlation)) +
+  geom_tile() +
+  geom_text(aes(label = round(Correlation, 2)), color = "black", size = 3) +  # Add correlation values
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0) +
+  scale_x_discrete(labels = cov_labels) +  # Update x-axis labels
+  theme_minimal() +
+  labs(title = "Correlation: Flu vs Shifted COVID Values (23-24)",
+       x = "", y = "State") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggsave(file = "figures/manuscript_figures/correlation_matrices/cor_matrix_covid_flu_23_24.png",  height = 8, width = 14, units = "in", bg = "white")
+
+## 2.2.3 24-25 season ----
+optimal_lag_flu_COVID_24_25 = cor_cov_flu_24_25 %>%
+  group_by(state) %>%
+  slice_max(order_by = Correlation, n = 1, with_ties = FALSE) %>%
+  ungroup()
+
+# Sort the optimal lags from earliest data to latest
+optimal_lag_flu_COVID_24_25 = optimal_lag_flu_COVID_24_25 %>%
+  mutate(COV_Variable = factor(COV_Variable,
+                               levels = cov_order)) %>%
+  arrange(COV_Variable, desc(Correlation)) %>%
+  mutate(state = factor(state, levels = unique(state)))
+
+# Extract state order from optimal_lags
+state_order_flu_COVID_24_25 = optimal_lag_flu_COVID_24_25 %>%
+  pull(state)
+
+state_order_flu_COVID_24_25 = rev(state_order_flu_COVID_24_25)
+
+# Update data data to set the factor levels for both state and RSV_Variable
+cor_cov_flu_24_25 = cor_cov_flu_24_25 %>%
+  mutate(state = factor(state, levels = state_order_flu_COVID_24_25),
+         COV_Variable = factor(COV_Variable, levels = cov_order))
+
+# Generate heatmap with updated x-axis labels
+ggplot(cor_cov_flu_24_25, aes(x = COV_Variable, y = state, fill = Correlation)) +
+  geom_tile() +
+  geom_text(aes(label = round(Correlation, 2)), color = "black", size = 3) +  # Add correlation values
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0) +
+  scale_x_discrete(labels = cov_labels) +  # Update x-axis labels
+  theme_minimal() +
+  labs(title = "Correlation: Flu vs Shifted COVID Values (24-25)",
+       x = "", y = "State") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggsave(file = "figures/manuscript_figures/correlation_matrices/cor_matrix_covid_flu_24_25.png",  height = 8, width = 14, units = "in", bg = "white")
 
 # Sensitivity Analysis ----------------------------------------------------
 
@@ -124,7 +568,7 @@ cor_list_24_25_trunc %>%
   scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0) +
   theme_minimal() +
   labs(title = "Correlation: RSV vs Flu Variables (24-25), Truncated Data",
-       x = "Flu Variables (Lagged & Unlagged)", y = "State") +
+        x = "Flu Variables (Lagged & Unlagged)", y = "State") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 cor_list_24_25 = cor_list_24_25 %>%

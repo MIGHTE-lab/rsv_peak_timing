@@ -407,6 +407,7 @@ ggsave(file = "figures/nssp_24_25.png", width = 16, height = 10, units = "in", b
 # First combine the three yearly datasets
 nssp_all_years = bind_rows(nssp_signals_22_23, nssp_signals_23_24, nssp_signals_24_25)
 
+
 # Then select only the states of interest (MD, NY, TX)
 nssp_all_years %>%
   filter(state %in% c("Maryland", "Texas", "New York")) %>%
@@ -465,7 +466,6 @@ find_states_with_concurrent_rsv_peak = function(data) {
   )
 }
 
-find_states_with_early_flu_peak = function(data) {
   return(
     data %>%
       group_by(state) %>%
