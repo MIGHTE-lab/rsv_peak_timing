@@ -1,0 +1,131 @@
+,name_location,name_proxy,start_date,end_date
+0,Alabama,Alabama,2023-08-19,2024-01-06
+1,Alabama,Alabama,2024-08-03,2024-09-07
+2,Alabama,Alabama,2024-11-09,2025-01-25
+3,Alaska,Alaska,2023-09-09,2023-11-11
+4,Alaska,Alaska,2024-12-14,2025-01-04
+5,Arizona,Arizona,2022-11-19,2022-12-24
+6,Arizona,Arizona,2023-10-28,2024-01-13
+7,Arizona,Arizona,2024-11-02,2025-01-11
+8,Arkansas,Arkansas,2023-11-04,2024-02-24
+9,Arkansas,Arkansas,2024-08-17,2024-09-14
+10,Arkansas,Arkansas,2024-11-09,2025-02-15
+11,California,California,2023-09-16,2024-01-06
+12,California,California,2024-10-12,2025-01-25
+13,Colorado,Colorado,2022-11-19,2022-12-24
+14,Colorado,Colorado,2023-09-16,2024-01-06
+15,Colorado,Colorado,2024-10-12,2025-02-01
+16,Connecticut,Connecticut,2022-11-19,2022-12-24
+17,Connecticut,Connecticut,2023-09-02,2024-01-06
+18,Connecticut,Connecticut,2024-08-24,2025-02-15
+19,Delaware,Delaware,2022-11-19,2022-12-24
+20,Delaware,Delaware,2023-09-09,2024-01-06
+21,Delaware,Delaware,2024-10-12,2025-02-22
+22,Florida,Florida,2022-11-19,2022-12-31
+23,Florida,Florida,2023-09-30,2024-01-06
+24,Florida,Florida,2024-11-09,2025-02-01
+25,Georgia,Georgia,2023-10-07,2024-01-06
+26,Georgia,Georgia,2024-11-09,2025-02-01
+27,Hawaii,Hawaii,2023-10-14,2023-12-30
+28,Hawaii,Hawaii,2024-06-01,2024-06-22
+29,Hawaii,Hawaii,2024-11-09,2025-02-22
+30,Idaho,Idaho,2022-12-03,2022-12-24
+31,Idaho,Idaho,2023-11-18,2024-01-13
+32,Idaho,Idaho,2024-11-16,2025-01-04
+33,Illinois,Illinois,2023-08-19,2024-01-06
+34,Illinois,Illinois,2024-08-17,2025-02-22
+35,Indiana,Indiana,2022-11-19,2022-12-24
+36,Indiana,Indiana,2023-08-26,2024-01-06
+37,Indiana,Indiana,2024-09-14,2025-03-01
+38,Iowa,Iowa,2022-11-19,2022-12-24
+39,Iowa,Iowa,2023-11-11,2024-03-09
+40,Iowa,Iowa,2024-10-19,2025-02-15
+41,Kansas,Kansas,2023-10-21,2024-01-06
+42,Kansas,Kansas,2024-09-14,2025-02-15
+43,Kentucky,Kentucky,2023-11-11,2024-01-20
+44,Kentucky,Kentucky,2024-11-16,2024-12-28
+45,Louisiana,Louisiana,2023-08-12,2024-01-06
+46,Louisiana,Louisiana,2024-11-09,2025-01-04
+47,Maine,Maine,2022-12-03,2022-12-31
+48,Maine,Maine,2023-11-18,2024-02-24
+49,Maine,Maine,2024-10-12,2024-11-23
+50,Maryland,Maryland,2023-09-16,2024-01-06
+51,Maryland,Maryland,2024-10-05,2025-02-22
+52,Massachusetts,Massachusetts,2022-12-03,2022-12-31
+53,Massachusetts,Massachusetts,2023-09-23,2024-01-13
+54,Massachusetts,Massachusetts,2024-09-07,2025-02-22
+55,Michigan,Michigan,2022-12-03,2022-12-31
+56,Michigan,Michigan,2023-09-16,2024-01-13
+57,Michigan,Michigan,2024-09-07,2025-03-01
+58,Minnesota,Minnesota,2023-11-11,2024-03-02
+59,Minnesota,Minnesota,2024-09-28,2025-02-01
+60,Mississippi,Mississippi,2023-08-19,2024-01-06
+61,Mississippi,Mississippi,2024-08-03,2024-08-31
+62,Mississippi,Mississippi,2024-11-09,2025-02-01
+63,Montana,Montana,2022-12-03,2022-12-24
+64,Montana,Montana,2023-10-07,2024-01-20
+65,Montana,Montana,2024-12-14,2025-03-29
+66,Nebraska,Nebraska,2022-12-03,2022-12-24
+67,Nebraska,Nebraska,2023-09-30,2024-03-16
+68,Nebraska,Nebraska,2024-08-17,2025-02-15
+69,Nevada,Nevada,2022-11-19,2022-12-24
+70,Nevada,Nevada,2023-10-21,2024-01-06
+71,Nevada,Nevada,2024-11-23,2025-01-11
+72,New Hampshire,New Hampshire,2022-12-10,2023-01-07
+73,New Hampshire,New Hampshire,2023-12-02,2024-01-20
+74,New Hampshire,New Hampshire,2024-10-12,2025-02-22
+75,New Jersey,New Jersey,2023-09-09,2024-01-13
+76,New Jersey,New Jersey,2024-10-05,2025-02-08
+77,New Mexico,New Mexico,2022-12-03,2022-12-31
+78,New Mexico,New Mexico,2023-09-23,2024-01-06
+79,New Mexico,New Mexico,2024-11-09,2025-01-04
+80,New York,New York,2023-09-09,2024-01-06
+81,New York,New York,2024-10-05,2025-02-22
+82,North Carolina,North Carolina,2023-08-26,2024-01-06
+83,North Carolina,North Carolina,2024-08-17,2025-02-15
+84,North Dakota,North Dakota,2023-10-07,2024-01-20
+85,North Dakota,North Dakota,2024-12-21,2025-02-08
+86,Ohio,Ohio,2022-11-19,2022-12-24
+87,Ohio,Ohio,2023-10-14,2024-01-06
+88,Ohio,Ohio,2024-08-31,2025-02-22
+89,Oklahoma,Oklahoma,2022-11-19,2022-12-24
+90,Oklahoma,Oklahoma,2023-11-25,2024-03-09
+91,Oklahoma,Oklahoma,2024-11-23,2025-02-08
+92,Oregon,Oregon,2022-11-19,2022-12-24
+93,Oregon,Oregon,2023-09-16,2024-01-13
+94,Oregon,Oregon,2024-11-16,2025-01-04
+95,Pennsylvania,Pennsylvania,2022-11-19,2022-12-24
+96,Pennsylvania,Pennsylvania,2023-10-07,2024-01-06
+97,Pennsylvania,Pennsylvania,2024-08-24,2025-02-22
+98,Rhode Island,Rhode Island,2022-11-19,2022-12-31
+99,Rhode Island,Rhode Island,2023-10-21,2024-03-09
+100,Rhode Island,Rhode Island,2024-10-12,2025-02-22
+101,South Carolina,South Carolina,2023-09-23,2023-12-30
+102,South Carolina,South Carolina,2024-10-26,2025-02-08
+103,South Dakota,South Dakota,2022-11-19,2022-12-24
+104,South Dakota,South Dakota,2023-11-25,2024-01-06
+105,South Dakota,South Dakota,2024-11-09,2025-02-15
+106,Tennessee,Tennessee,2023-11-04,2024-01-13
+107,Tennessee,Tennessee,2024-11-02,2025-02-01
+108,Texas,Texas,2023-11-11,2024-01-06
+109,Texas,Texas,2024-11-02,2025-02-08
+110,Utah,Utah,2022-12-03,2022-12-31
+111,Utah,Utah,2023-10-07,2023-12-30
+112,Utah,Utah,2024-11-16,2025-02-22
+113,Vermont,Vermont,2022-12-03,2022-12-24
+114,Vermont,Vermont,2023-10-28,2024-02-03
+115,Virginia,Virginia,2023-09-02,2024-01-06
+116,Virginia,Virginia,2024-08-17,2025-02-22
+117,Washington,Washington,2023-12-02,2024-01-13
+118,Washington,Washington,2024-09-28,2025-02-22
+119,West Virginia,West Virginia,2023-11-25,2024-03-02
+120,West Virginia,West Virginia,2024-08-24,2025-03-29
+121,West Virginia,West Virginia,2025-02-01,2025-03-08
+122,Wisconsin,Wisconsin,2022-11-19,2022-12-24
+123,Wisconsin,Wisconsin,2023-10-07,2024-01-13
+124,Wisconsin,Wisconsin,2024-09-07,2025-02-22
+125,Wyoming,Wyoming,2023-11-11,2024-01-13
+126,Wyoming,Wyoming,2024-11-09,2025-02-22
+127,Wyoming,Wyoming,2024-11-09,2025-03-29
+128,District of Columbia,District of Columbia,2023-09-09,2024-01-13
+129,District of Columbia,District of Columbia,2024-11-16,2025-02-15

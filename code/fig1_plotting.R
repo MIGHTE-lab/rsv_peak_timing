@@ -20,7 +20,7 @@ library(lubridate)
 library(patchwork)
 
 ## Load data
-nssp_all_years = read_csv("data/processed/nssp_all_years_030425.csv")
+nssp_all_years = read_csv("data/nssp_all_years_040725.csv")
 dat_cor_fig1 = read_csv("data/data_cor_fig1.csv")
 nssp_fig1 = nssp_all_years %>%
   filter(state %in% c("Maryland", "Texas", "New York"))
@@ -138,6 +138,40 @@ p1 = nssp_all_years %>%
       'COVID-19' = "#EFB75B"
     )) +
   labs(x = '', y = '') +
+  scale_x_date(date_labels = "%b\n%y", date_breaks = "2 months") +
+  envalysis::theme_publish() +
+  theme(
+    axis.text.x = element_text(size = 5),
+    axis.ticks.x = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.text.y = element_blank(),
+    legend.title = element_blank(),
+    legend.position = 'right'
+  )
+
+p1 / (h1 + h2 + h3) + plot_layout(heights = c(0.8, 0.2))
+# ggsave("figures/manuscript_figures/fig1/fig2_040825.png", width = 12, height = 12, units = "in", bg = "white")
+
+## Making individual subfigures for presentation ----
+
+## MA
+nssp_all_years %>%
+  filter(state %in% c("Massachusetts")) %>%
+  ggplot(aes(x = week_end)) +
+  geom_line(aes(y = flu_times_coef, color = 'Flu'), linewidth = 0.85) +
+  geom_line(aes(y = rsv_times_coef, color = 'RSV'), linewidth = 0.85) +
+  geom_line(aes(y = covid_times_coef, color = "COVID-19"), linewidth = 0.85) +
+  geom_line(aes(y = ili_rescaled, color = 'ILI'), linewidth = 0.85) +
+  facet_grid(state ~ season, scales = 'free') +
+  scale_color_manual(
+    limits = c("ILI", "RSV", "Flu", "COVID-19"),
+    values = c(
+      'ILI' = '#E2DBC9',
+      'RSV' = '#183A5A',
+      'Flu' = '#C34129',
+      'COVID-19' = "#EFB75B"
+    )) +
+  labs(x = '', y = '') +
   scale_x_date(date_labels = "%b\n%y", date_breaks = "3 months") +
   envalysis::theme_publish() +
   theme(
@@ -149,6 +183,93 @@ p1 = nssp_all_years %>%
     legend.position = 'right'
   )
 
-p1 / (h1 + h2 + h3) + plot_layout(heights = c(0.7, 0.3))
-ggsave("figures/manuscript_figures/fig1/fig2_032625.png", width = 7, height = 9, units = "in", bg = "white")
+## TX
+nssp_all_years %>%
+  filter(state %in% c("Texas")) %>%
+  ggplot(aes(x = week_end)) +
+  geom_line(aes(y = flu_times_coef, color = 'Flu'), linewidth = 0.85) +
+  geom_line(aes(y = rsv_times_coef, color = 'RSV'), linewidth = 0.85) +
+  geom_line(aes(y = covid_times_coef, color = "COVID-19"), linewidth = 0.85) +
+  geom_line(aes(y = ili_rescaled, color = 'ILI'), linewidth = 0.85) +
+  facet_grid(state ~ season, scales = 'free') +
+  scale_color_manual(
+    limits = c("ILI", "RSV", "Flu", "COVID-19"),
+    values = c(
+      'ILI' = '#E2DBC9',
+      'RSV' = '#183A5A',
+      'Flu' = '#C34129',
+      'COVID-19' = "#EFB75B"
+    )) +
+  labs(x = '', y = '') +
+  scale_x_date(date_labels = "%b\n%y", date_breaks = "3 months") +
+  envalysis::theme_publish() +
+  theme(
+    axis.text.x = element_text(size = 5),
+    axis.ticks.x = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.text.y = element_blank(),
+    legend.title = element_blank(),
+    legend.position = 'right'
+  )
+
+## MD
+nssp_all_years %>%
+  filter(state %in% c("Maryland")) %>%
+  ggplot(aes(x = week_end)) +
+  geom_line(aes(y = flu_times_coef, color = 'Flu'), linewidth = 0.85) +
+  geom_line(aes(y = rsv_times_coef, color = 'RSV'), linewidth = 0.85) +
+  geom_line(aes(y = covid_times_coef, color = "COVID-19"), linewidth = 0.85) +
+  geom_line(aes(y = ili_rescaled, color = 'ILI'), linewidth = 0.85) +
+  facet_grid(state ~ season, scales = 'free') +
+  scale_color_manual(
+    limits = c("ILI", "RSV", "Flu", "COVID-19"),
+    values = c(
+      'ILI' = '#E2DBC9',
+      'RSV' = '#183A5A',
+      'Flu' = '#C34129',
+      'COVID-19' = "#EFB75B"
+    )) +
+  labs(x = '', y = '') +
+  scale_x_date(date_labels = "%b\n%y", date_breaks = "3 months") +
+  envalysis::theme_publish() +
+  theme(
+    axis.text.x = element_text(size = 5),
+    axis.ticks.x = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.text.y = element_blank(),
+    legend.title = element_blank(),
+    legend.position = 'right'
+  )
+
+p1_22_23
+
+nssp_all_years %>%
+  filter(season == "22-23", state %in% c("Maryland", "Texas", "New York")) %>%
+  ggplot(aes(x = week_end)) +
+  geom_line(aes(y = flu_times_coef, color = 'Flu'), linewidth = 0.85) +
+  geom_line(aes(y = rsv_times_coef, color = 'RSV'), linewidth = 0.85) +
+  geom_line(aes(y = covid_times_coef, color = "COVID-19"), linewidth = 0.85) +
+  geom_line(aes(y = ili_rescaled, color = 'ILI'), linewidth = 0.85) +
+  facet_grid(state ~ season, scales = 'free') +
+  scale_color_manual(
+    limits = c("ILI", "RSV", "Flu", "COVID-19"),
+    values = c(
+      'ILI' = '#E2DBC9',
+      'RSV' = '#183A5A',
+      'Flu' = '#C34129',
+      'COVID-19' = "#EFB75B"
+    )) +
+  labs(x = '', y = '') +
+  scale_x_date(date_labels = "%b\n%y", date_breaks = "2 months") +
+  envalysis::theme_publish() +
+  theme(
+    axis.text.x = element_text(size = 5),
+    axis.ticks.x = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.text.y = element_blank(),
+    legend.title = element_blank(),
+    legend.position = 'right'
+  )
+
+p1
 

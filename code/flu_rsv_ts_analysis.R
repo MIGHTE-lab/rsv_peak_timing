@@ -7,7 +7,7 @@
 ##
 ## Date Created: 2025-01-29
 ##
-## Last Updated: 2025-03-17
+## Last Updated: 2025-04-14
 ##
 ## Version: 1.3
 ## Update stacked regression to use gridsearch for lambdas
@@ -37,12 +37,12 @@ setwd("~/Documents/Projects/rsv_peak_timing")
 
 ## Load NSSP data
 dat = read_csv(
-  "data/NSSP/nssp_full_02282025.csv"
+  "data/NSSP/nssp_full_040525.csv"
 )
 
 ## Load ILI data and do some data management
 ## ILI data - need data from 21 - 23
-ili_data = read_csv("data/ILInet/ILINet_state_2025-02-22.csv",
+ili_data = read_csv("data/ILInet/ILINet_state_2025_03-29.csv",
                     na = "X",
                     skip = 1)
 
@@ -111,59 +111,9 @@ minmax = function(x) {
 
 dat_combined_ = dat_combined %>% drop_na()
 
-# Let's do some data checks here
-dat_MT_2425 = dat_combined_ %>% filter(state == "Montana", season == "24-25")  %>%
-  mutate(
-    ili_rescaled = minmax(ili),
-    flu_rescaled = minmax(flu),
-    rsv_rescaled = minmax(rsv),
-    covid_rescaled = minmax(covid)
-  )
-
-# Use 10-fold CV to identify best lambda
-  cv = cv.glmnet(
-    x = data.matrix(dat_MT_2425[, c('flu_rescaled', 'rsv_rescaled', 'covid_rescaled')]),
-    y = data.matrix(dat_MT_2425[, 'ili_rescaled']),
-    intercept = FALSE,
-    alpha = 0
-  )
-
-  cv$lambda.min
-  cv$lambda.1se
-
-# Fit the penalized model using the specified lambda from the CV model
-  fit = penalized(
-    ili_rescaled ~ flu_rescaled + rsv_rescaled + covid_rescaled ,
-    positive = TRUE,
-    unpenalized = ~ 0,
-    data = dat_MT_2425,
-    lambda2 = cv$lambda.1se
-  )
-
-coefficients(fit)
-
-# Let's do some data checks here
-dat_MI_2324 = dat_combined_ %>% filter(state == "Michigan", season == "23-24")  %>%
-  mutate(
-    ili_rescaled = minmax(ili),
-    flu_rescaled = minmax(flu),
-    rsv_rescaled = minmax(rsv),
-    covid_rescaled = minmax(covid)
-  )
-
-
+## 2. Create modeling functions ----
 # Build function which takes in a dataset and returns the optimal ridge coefficients
 # after using gridsearch for the optimal lambda value
-
-dat_WY_2223 = dat_combined_ %>% filter(state == "Wyoming", season == "22-23")  %>%
-  mutate(
-    ili_rescaled = minmax(ili),
-    flu_rescaled = minmax(flu),
-    rsv_rescaled = minmax(rsv),
-    covid_rescaled = minmax(covid)
-  )
-
-write_csv(dat_WY_2223, file = "data/dat_WY_2223.csv")
 
 ridge_CV = function(data){
 
@@ -203,9 +153,9 @@ ridge_CV = function(data){
     return(coef_values) # 2: covid, 3: flu, 4: rsv
 }
 
-# 2. Running the ridge models using glmnet with gridsearch
+# 3. Run models and create state-season plots ----
 
-# 22-23 season ----
+# 22-23 season
 nssp_signals_22_23 = NULL
 for (geo in dat_combined_ %>% distinct(state) %>% pull()) {
 
@@ -245,7 +195,9 @@ nssp_signals_22_23 %>%
     'RSV' = '#183A5A',
     'Flu' = '#C34129',
     'COVID-19' = "#EFB75B"
-  )) +
+  ),
+  breaks = c('ILI', 'Flu', 'RSV', 'COVID-19')  # This sets the legend order
+  ) +
   labs(x = '', y = '') +
   scale_x_date(date_labels = "%b\n%y", date_breaks = "2 months") +
   envalysis::theme_publish() +
@@ -258,9 +210,9 @@ nssp_signals_22_23 %>%
     legend.position = 'right',
     strip.text = element_text(size = 9)
   )
-# ggsave(file = "figures/nssp_22_23_031725.png", width = 16, height = 10, units = "in", bg = "white")
+ggsave(file = "figures/nssp_22_23_041425.png", width = 16, height = 10, units = "in", bg = "white")
 
-# 23-24 season ----
+# 23-24 season
 nssp_signals_23_24 = NULL
 for (geo in dat_combined_ %>% distinct(state) %>% pull()) {
 
@@ -300,7 +252,9 @@ nssp_signals_23_24 %>%
     'RSV' = '#183A5A',
     'Flu' = '#C34129',
     'COVID-19' = "#EFB75B"
-  )) +
+  ),
+  breaks = c('ILI', 'Flu', 'RSV', 'COVID-19')  # This sets the legend order
+  ) +
   labs(x = '', y = '') +
   scale_x_date(date_labels = "%b\n%y", date_breaks = "2 months") +
   envalysis::theme_publish() +
@@ -313,9 +267,9 @@ nssp_signals_23_24 %>%
     legend.position = 'right',
     strip.text = element_text(size = 9)
   )
-# ggsave(file = "figures/nssp_23_24_031725.png", width = 16, height = 10, units = "in", bg = "white")
+ggsave(file = "figures/nssp_23_24_041425.png", width = 16, height = 10, units = "in", bg = "white")
 
-# 24-25 season ----
+# 24-25 season
 nssp_signals_24_25 = NULL
 for (geo in dat_combined_ %>% filter(state != "Wyoming") %>% distinct(state) %>% pull()) {
 
@@ -344,6 +298,7 @@ for (geo in dat_combined_ %>% filter(state != "Wyoming") %>% distinct(state) %>%
   print(paste0("State ",geo," completed."))
 }
 nssp_signals_24_25 %>%
+  filter(state != "Vermont") %>%
   ggplot(aes(x = week_end)) +
   geom_line(aes(y = flu_times_coef, color = 'Flu'), linewidth = 0.65) +
   geom_line(aes(y = rsv_times_coef, color = 'RSV'), linewidth = 0.65) +
@@ -355,7 +310,9 @@ nssp_signals_24_25 %>%
     'RSV' = '#183A5A',
     'Flu' = '#C34129',
     'COVID-19' = "#EFB75B"
-  )) +
+  ),
+  breaks = c('ILI', 'Flu', 'RSV', 'COVID-19')  # This sets the legend order
+  ) +
   labs(x = '', y = '') +
   scale_x_date(date_labels = "%b\n%y", date_breaks = "2 months") +
   envalysis::theme_publish() +
@@ -368,9 +325,9 @@ nssp_signals_24_25 %>%
     legend.position = 'right',
     strip.text = element_text(size = 9)
   )
-ggsave(file = "figures/nssp_24_25_031725.png", width = 16, height = 10, units = "in", bg = "white")
+ggsave(file = "figures/nssp_24_25_041425.png", width = 16, height = 10, units = "in", bg = "white")
 
-# Generating the 3x3 panel Figure 1. Show the seasonal changes for MD, NY, and TX
+# 4. Generate Figure 1 (3x3 state-season example figure) ----
 
 # First combine the three yearly datasets
 nssp_all_years = bind_rows(nssp_signals_22_23, nssp_signals_23_24, nssp_signals_24_25)
@@ -401,8 +358,10 @@ nssp_all_years %>%
     legend.title = element_blank(),
     legend.position = 'bottom'
   )
-ggsave(file = "figures/3x3_MD_NY_TX_v3.png", height = 8, width = 8, units = "in", bg = "white")
+ggsave(file = "figures/3x3_MD_NY_TX_v4.png", height = 8, width = 8, units = "in", bg = "white")
 
+# 5. Determining temporal order from ridge model results ----
+## Create helper functions
 find_states_with_early_rsv_peak = function(data) {
   return(
    data %>%
@@ -448,48 +407,23 @@ find_states_with_early_flu_peak = function(data) {
   )
 }
 
-# Function calls
 # Flu before RSV
 find_states_with_early_flu_peak(nssp_signals_22_23) #2
 find_states_with_early_flu_peak(nssp_signals_23_24) #9
-find_states_with_early_flu_peak(nssp_signals_24_25) #8
-# 19
+find_states_with_early_flu_peak(nssp_signals_24_25) #10
+# 21 - 14.2%
 
 find_states_with_early_rsv_peak(nssp_signals_22_23) #45
 find_states_with_early_rsv_peak(nssp_signals_23_24) #35
-find_states_with_early_rsv_peak(nssp_signals_24_25) #35
-# 125
-
-125/150 #83.3%
+find_states_with_early_rsv_peak(nssp_signals_24_25) #34
+# 114 - 77.0%
 
 find_states_with_concurrent_rsv_peak(nssp_signals_22_23) #3
 find_states_with_concurrent_rsv_peak(nssp_signals_23_24) #6
-find_states_with_concurrent_rsv_peak(nssp_signals_24_25) #6
-# 15
+find_states_with_concurrent_rsv_peak(nssp_signals_24_25) #5
+# 14 - 9.5%
 
-all_states <- c(
-  "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado",
-  "Connecticut", "Delaware", "District of Columbia", "Florida", "Georgia",
-  "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky",
-  "Louisiana", "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota",
-  "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada", "New Hampshire",
-  "New Jersey", "New Mexico", "New York", "North Carolina", "North Dakota",
-  "Ohio", "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island", "South Carolina",
-  "South Dakota", "Tennessee", "Texas", "Utah", "Vermont", "Virginia",
-  "Washington", "West Virginia", "Wisconsin", "Wyoming"
-)
-
-setdiff(all_states, unique(dat_combined_$state))
-
-nssp_22_23_flu_before_rsv = find_states_with_early_flu_peak(nssp_signals_22_23)
-nssp_22_23_rsv_before_flu = find_states_with_early_rsv_peak(nssp_signals_22_23)
-nssp_22_23_concurrent_peak = find_states_with_concurrent_rsv_peak(nssp_signals_22_23)
-
-nssp_22_23_check = bind_rows(nssp_22_23_flu_before_rsv, nssp_22_23_rsv_before_flu, nssp_22_23_concurrent_peak)
-setdiff(all_states, nssp_22_23_check$state)
-
-nssp_signals_22_23
-
+## Checking start and end dates for peaks
 nssp_signals_22_23 %>%
   group_by(state) %>%
   summarize(
@@ -556,17 +490,8 @@ nssp_signals_24_25  %>%
 # Flu: min June 15, max Feb 15
 # ILI: min Sep 28, max Feb 15
 
-# In the current season, this method does not really work. At least for now,
-# the data suggests that flu and RSV are currently peaking
-
-
-# Evaluating temporal relationships between RSV and Flu signals
-nssp_signals_22_23 = nssp_signals_22_23 %>% select(-c(year, epiweek))
-
-# write_csv(nssp_signals_22_23, file = "data/nssp_signals_22_23_processed.csv")
-
 # Exporting the data for early warning system
 nssp_all_years = nssp_all_years %>% select(week_end, state, season, covid, flu, rsv, ili,
                           contains("rescaled"), contains("beta"), contains("times"))
 
-write_csv(nssp_all_years, file = "data/nssp_all_years.csv")
+write_csv(nssp_all_years, file = "data/nssp_all_years_0415.csv")

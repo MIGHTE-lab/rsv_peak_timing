@@ -7,7 +7,8 @@
 ##
 ## Date Created: 2025-03-03
 ##
-## Last Updated: 2025-03-10
+## Last Updated: 2025-04-22
+## using updated EWS data
 ##
 ## -----------------------------------------------------------------------------
 
@@ -18,7 +19,7 @@ library(ggh4x)
 library(patchwork)
 
 ## Load NSSP data
-nssp = read_csv(file = "data/processed/nssp_all_years_030425.csv", show_col_types = FALSE)
+nssp = read_csv(file = "data/processed/nssp_all_years_041525.csv", show_col_types = FALSE)
 
 ## Test to see if we can regenerate the indivdual season plots from the individual years
 nssp %>%
@@ -51,14 +52,14 @@ nssp %>%
 ## Load the data from EWS and do some processing
 
 ## Onsets ----
-flu_onsets = read_csv(file = "early_warning/windows/flu_times_coef.csv", show_col_types = FALSE) %>%
+flu_onsets = read_csv(file = "early_warning/windows_/flu_times_coef_040725.csv", show_col_types = FALSE) %>%
   select(-1)
 
 flu_onsets = flu_onsets %>%
   select(name_proxy, start_date, end_date) %>%
   rename(state = name_proxy, flu_onset = start_date, flu_end = end_date)
 
-rsv_onsets = read_csv(file = "early_warning/windows/rsv_times_coef.csv", show_col_types = FALSE) %>%
+rsv_onsets = read_csv(file = "early_warning/windows_/rsv_times_coef_040725.csv", show_col_types = FALSE) %>%
   select(-1)
 
 rsv_onsets = rsv_onsets %>%
@@ -102,11 +103,48 @@ onsets = full_join(flu_onsets, rsv_onsets, by = c("state", "season")) %>%
 
 onsets = onsets %>% select(state, season, flu_onset, flu_end, rsv_onset, rsv_end)
 
-write_csv(onsets, file = "data/onsets_03052025.csv")
+
+# Create a function to find the best matching RSV onset for each flu onset
+match_onsets = function(flu_data, rsv_data) {
+  # Create a crossed dataset with all possible flu-rsv onset combinations
+  # within the same state and season
+  crossed = flu_data %>%
+    inner_join(rsv_data, by = c("state", "season"), relationship = "many-to-many") %>%
+    # Calculate time difference in days (negative means RSV is before flu)
+    mutate(
+      time_diff = as.numeric(difftime(flu_onset, rsv_onset, units = "days")),
+      # Prioritize RSV onsets that come before flu onsets
+      # Small positive penalty for RSV after flu
+      priority_diff = ifelse(time_diff < 0,
+                             abs(time_diff),
+                             time_diff * 1.5)
+    )
+
+  # For each flu onset, find the closest RSV onset with priority for those before
+  best_matches = crossed %>%
+    group_by(state, season, flu_onset, flu_end) %>%
+    slice_min(priority_diff, n = 1) %>%
+    ungroup() %>%
+    # Calculate weeks difference for analysis
+    mutate(weeks_diff = time_diff / 7) %>%
+    select(state, season, flu_onset, flu_end, rsv_onset, rsv_end, weeks_diff)
+
+  return(best_matches)
+}
+
+# Apply the function to your datasets
+onsets = match_onsets(flu_onsets, rsv_onsets)
+
+onsets %>%
+  filter(season != "22-23") %>%
+  ggplot(aes(x = rsv_onset, y = flu_onset)) +
+  geom_point()
+
+write_csv(onsets, file = "data/onsets_042225.csv")
 
 ## Peaks ----
 
-flu_peaks = read_csv(file = "early_warning/peaks/flu_times_coef.csv", show_col_types = FALSE) %>%
+flu_peaks = read_csv(file = "early_warning/peaks_/flu_times_coef_040725.csv", show_col_types = FALSE) %>%
   select(-1)
 
 flu_peaks = flu_peaks %>%
@@ -127,7 +165,7 @@ flu_peaks = flu_peaks %>% mutate(
 
 flu_peaks
 
-rsv_peaks = read_csv(file = "early_warning/peaks/rsv_times_coef.csv", show_col_types = FALSE) %>%
+rsv_peaks = read_csv(file = "early_warning/peaks_/rsv_times_coef_040725.csv", show_col_types = FALSE) %>%
   select(-1)
 
 rsv_peaks = rsv_peaks %>%
@@ -147,7 +185,45 @@ rsv_peaks = rsv_peaks %>%
   ) %>%
   select(-c(year, month))
 
-peaks = flu_peaks %>% left_join(rsv_peaks, by = c("state", "season"), relationship = "many-to-many")
+# Create a function to find the best matching RSV peak for each flu peak
+match_peaks = function(flu_data, rsv_data) {
+  # Create a crossed dataset with all possible flu-rsv peak combinations
+  # within the same state and season
+  crossed = flu_data %>%
+    inner_join(rsv_data, by = c("state", "season"), relationship = "many-to-many") %>%
+    # Calculate time difference in days (negative means RSV peak is before flu peak)
+    mutate(
+      time_diff = as.numeric(difftime(flu_peak, rsv_peak, units = "days")),
+      # Prioritize RSV peaks that come before flu peaks
+      # Small positive penalty for RSV after flu
+      priority_diff = ifelse(time_diff < 0,
+                             abs(time_diff),
+                             time_diff * 1.5)
+    )
+
+  # For each flu peak, find the closest RSV peak with priority for those before
+  best_matches = crossed %>%
+    group_by(state, season, flu_peak) %>%
+    slice_min(priority_diff, n = 1) %>%
+    ungroup() %>%
+    # Calculate weeks difference for analysis
+    mutate(weeks_diff = time_diff / 7) %>%
+    select(state, season, flu_peak, rsv_peak, weeks_diff)
+
+  return(best_matches)
+}
+
+# Apply the function to your datasets
+peaks = match_peaks(flu_peaks, rsv_peaks)
+
+peaks %>%
+  filter(season != "22-23") %>%
+  ggplot(aes(x = flu_peak, y = rsv_peak)) +
+  geom_point()
+
+peaks
+
+onsets
 
 # Looks reasonable - we see that some diseases have multiple peaks in seasons. I guess the algorithm could not detect peaks in 22-23 because we started data collection too late in the season
 
