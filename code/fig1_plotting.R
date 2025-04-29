@@ -7,8 +7,8 @@
 ##
 ## Date Created: 2025-03-26
 ##
-## Last Updated: 2025-03-26
-## Update notes: Initial version
+## Last Updated: 2025-04-24
+## Update notes: Updated for new data pull and after correction of models
 ## -----------------------------------------------------------------------------
 
 
@@ -20,7 +20,7 @@ library(lubridate)
 library(patchwork)
 
 ## Load data
-nssp_all_years = read_csv("data/nssp_all_years_040725.csv")
+nssp_all_years = read_csv("data/processed/nssp_all_years_041525.csv")
 dat_cor_fig1 = read_csv("data/data_cor_fig1.csv")
 nssp_fig1 = nssp_all_years %>%
   filter(state %in% c("Maryland", "Texas", "New York"))
@@ -156,7 +156,36 @@ p1 / (h1 + h2 + h3) + plot_layout(heights = c(0.8, 0.2))
 
 ## MA
 nssp_all_years %>%
-  filter(state %in% c("Massachusetts")) %>%
+  filter(state %in% c("Texas"), season == "23-24") %>%
+  ggplot(aes(x = week_end)) +
+  geom_line(aes(y = flu_times_coef, color = 'Flu'), linewidth = 0.85) +
+  geom_line(aes(y = rsv_times_coef, color = 'RSV'), linewidth = 0.85) +
+  geom_line(aes(y = covid_times_coef, color = "COVID-19"), linewidth = 0.85) +
+  geom_line(aes(y = ili_rescaled, color = 'ILI'), linewidth = 0.85) +
+  facet_grid(state ~ season, scales = 'free') +
+  scale_color_manual(
+    limits = c("ILI", "RSV", "Flu", "COVID-19"),
+    values = c(
+      'ILI' = '#E2DBC9',
+      'RSV' = '#183A5A',
+      'Flu' = '#C34129',
+      'COVID-19' = "#EFB75B"
+    )) +
+  labs(x = '', y = '') +
+  scale_x_date(date_labels = "%b\n%y", date_breaks = "3 months") +
+  envalysis::theme_publish() +
+  theme(
+    axis.text.x = element_text(size = 5),
+    axis.ticks.x = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.text.y = element_blank(),
+    legend.title = element_blank(),
+    legend.position = 'right'
+  )
+
+## MA
+nssp_all_years %>%
+  filter(state %in% c("Massachusetts"), season == ) %>%
   ggplot(aes(x = week_end)) +
   geom_line(aes(y = flu_times_coef, color = 'Flu'), linewidth = 0.85) +
   geom_line(aes(y = rsv_times_coef, color = 'RSV'), linewidth = 0.85) +

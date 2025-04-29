@@ -94,16 +94,6 @@ flu_onsets = flu_onsets %>% select(state, season, flu_onset, flu_end)
 
 rsv_onsets = rsv_onsets %>% select(state, season, rsv_onset, rsv_end)
 
-onsets = full_join(flu_onsets, rsv_onsets, by = c("state", "season")) %>%
-  mutate(date_diff = abs(as.numeric(difftime(flu_onset, rsv_onset, units = "days")))) %>%
-  group_by(state, season, flu_onset, flu_end) %>%
-  slice_min(date_diff, n = 1) %>%  # Keep the closest RSV onset for each flu onset
-  ungroup() %>%
-  select(-date_diff)
-
-onsets = onsets %>% select(state, season, flu_onset, flu_end, rsv_onset, rsv_end)
-
-
 # Create a function to find the best matching RSV onset for each flu onset
 match_onsets = function(flu_data, rsv_data) {
   # Create a crossed dataset with all possible flu-rsv onset combinations
@@ -144,7 +134,7 @@ write_csv(onsets, file = "data/onsets_042225.csv")
 
 ## Peaks ----
 
-flu_peaks = read_csv(file = "early_warning/peaks_/flu_times_coef_040725.csv", show_col_types = FALSE) %>%
+flu_peaks = read_csv(file = "early_warning/peaks_042425/flu_times_coef_041525.csv", show_col_types = FALSE) %>%
   select(-1)
 
 flu_peaks = flu_peaks %>%
@@ -165,7 +155,7 @@ flu_peaks = flu_peaks %>% mutate(
 
 flu_peaks
 
-rsv_peaks = read_csv(file = "early_warning/peaks_/rsv_times_coef_040725.csv", show_col_types = FALSE) %>%
+rsv_peaks = read_csv(file = "early_warning/peaks_042425/rsv_times_coef_041525.csv", show_col_types = FALSE) %>%
   select(-1)
 
 rsv_peaks = rsv_peaks %>%
@@ -215,11 +205,6 @@ match_peaks = function(flu_data, rsv_data) {
 
 # Apply the function to your datasets
 peaks = match_peaks(flu_peaks, rsv_peaks)
-
-peaks %>%
-  filter(season != "22-23") %>%
-  ggplot(aes(x = flu_peak, y = rsv_peak)) +
-  geom_point()
 
 peaks
 
