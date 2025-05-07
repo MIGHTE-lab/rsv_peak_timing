@@ -111,6 +111,9 @@ minmax = function(x) {
 
 dat_combined_ = dat_combined %>% drop_na()
 
+dat_combined_ %>% filter(season == "24-25", state == "Vermont") %>%
+  arrange(week_end)
+
 ## 2. Create modeling functions ----
 # Build function which takes in a dataset and returns the optimal ridge coefficients
 # after using gridsearch for the optimal lambda value

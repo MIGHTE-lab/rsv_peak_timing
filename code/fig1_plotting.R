@@ -149,6 +149,9 @@ p1 = nssp_all_years %>%
     legend.position = 'right'
   )
 
+p1
+ggsave("figures/manuscript_figures/fig1/fig1_timeseries.png", width = 8, height = 9, units = "in", bg = "white")
+
 p1 / (h1 + h2 + h3) + plot_layout(heights = c(0.8, 0.2))
 # ggsave("figures/manuscript_figures/fig1/fig2_040825.png", width = 12, height = 12, units = "in", bg = "white")
 
