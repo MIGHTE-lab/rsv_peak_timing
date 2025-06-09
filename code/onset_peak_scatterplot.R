@@ -20,18 +20,12 @@ library(patchwork)
 library(ggrepel)
 
 ## Load data
-flu_dat = read_csv('data/early_warning/flu_matched_peaks_onsets.csv')
-flu_dat2 = read_csv('data/early_warning/flu_matched_peaks_onsets2.csv')
+flu_dat = read_csv('data/early_warning/flu_matched_peaks_onsets2.csv')
 rsv_dat = read_csv('data/early_warning/rsv_matched_peaks_onsets.csv')
-cov_dat = read_csv('data/early_warning/covid_matched_peaks_onsets.csv')
-cov_dat2 = read_csv('data/early_warning/covid_matched_peaks_onsets_2.csv')
+cov_dat = read_csv('data/early_warning/covid_matched_peaks_onsets_2.csv')
 
 ## Rename columns
-flu_dat = flu_dat %>% rename(flu_onset = onset_date,
-                   flu_end = end_date,
-                   flu_peak = date_peak)
-
-flu_dat2 = flu_dat2 %>% rename(flu_onset = start_date,
+flu_dat = flu_dat %>% rename(flu_onset = start_date,
                                flu_end = end_date,
                                flu_peak = date_peak,
                                state = name_location)
@@ -40,26 +34,21 @@ rsv_dat = rsv_dat %>% rename(rsv_onset = onset_date,
                              rsv_end = end_date,
                              rsv_peak = date_peak)
 
-cov_dat = cov_dat %>% rename(covid_onset = onset_date,
-                             covid_end = end_date,
-                             covid_peak = date_peak)
-
-cov_dat2 = cov_dat2 %>%
+cov_dat = cov_dat %>%
   rename(covid_onset = start_date,
          covid_end = end_date,
          covid_peak = date_peak,
          state = name_location) %>%
-  select(state, covid_onset, covid_end, covid_peak, season, time_diff)
-
-cov_dat2 = cov_dat2 %>% mutate(time_diff_week = round(time_diff/7, 1))
+  select(state, covid_onset, covid_end, covid_peak, season, time_diff) %>%
+  mutate(time_diff_week = round(time_diff/7, 1))
 
 ## Create the season-specific data subsets
-flu_dat_23 = flu_dat2 %>% filter(season == "23-24")
-flu_dat_24 = flu_dat2 %>% filter(season == "24-25")
+flu_dat_23 = flu_dat %>% filter(season == "23-24")
+flu_dat_24 = flu_dat %>% filter(season == "24-25")
 rsv_dat_23 = rsv_dat %>% filter(season == "23-24")
 rsv_dat_24 = rsv_dat %>% filter(season == "24-25")
-cov_dat_23 = cov_dat2 %>% filter(season == "23-24")
-cov_dat_24 = cov_dat2 %>% filter(season == "24-25")
+cov_dat_23 = cov_dat %>% filter(season == "23-24")
+cov_dat_24 = cov_dat %>% filter(season == "24-25")
 
 ## Helper function
 state_to_abbrev = function(state_name) {
@@ -95,6 +84,13 @@ flu_dat_24 %>%
   ggplot(aes(x = time_diff)) +
   geom_boxplot()
 
+# Export these data to build other visualizations
+write_csv(flu_dat_23, "data/processed/flu_onset_peak_times_23.csv")
+write_csv(flu_dat_24, "data/processed/flu_onset_peak_times_24.csv")
+write_csv(rsv_dat_23, "data/processed/rsv_onset_peak_times_23.csv")
+write_csv(rsv_dat_24, "data/processed/rsv_onset_peak_times_24.csv")
+write_csv(cov_dat_23, "data/processed/cov_onset_peak_times_23.csv")
+write_csv(cov_dat_24, "data/processed/cov_onset_peak_times_24.csv")
 
 # 2. Main plotting function -----------------------------------------------
 # Create a function to plot flu dates vs comparison dates (RSV or COVID)
@@ -505,8 +501,6 @@ violin_onset_horizontal = plot_data %>% filter(str_detect(comparison, "Onset")) 
     legend.position = "none")
 
 violin_onset_horizontal
-
-
 # ggsave(file = "figures/manuscript_figures/ews_diff_violin_plot.png", width = 10, height = 8, units = "in", bg = "white")
 
 # 5. Getting point statistics from scatterplots

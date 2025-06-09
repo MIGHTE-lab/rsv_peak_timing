@@ -24,7 +24,6 @@ library(lubridate)
 library(MMWRweek)
 
 ## Visualization
-library(firatheme)
 library(ggh4x)
 
 ## Modeling
@@ -43,8 +42,8 @@ dat = read_csv(
 ## Load ILI data and do some data management
 ## ILI data - need data from 21 - 23
 ili_data = read_csv("data/ILInet/ILINet_state_2025_03-29.csv",
-                    na = "X",
-                    skip = 1)
+                     na = "X",
+                     skip = 1)
 
 names(ili_data) = c(
   "region_type",
@@ -70,14 +69,15 @@ ili_data_with_dates = ili_data %>%
   select(region, year, epiweek, week_end, unweighted_ili, ilitotal) %>%
   rename(state = region)
 
-
-dat = dat %>% filter(county == "All") %>% select(
-  week_end,
-  geography,
-  percent_visits_covid,
-  percent_visits_influenza,
-  percent_visits_rsv
-)
+dat = dat %>%
+  filter(county == "All") %>%
+  select(
+    week_end,
+    geography,
+    percent_visits_covid,
+    percent_visits_influenza,
+    percent_visits_rsv
+  )
 
 # Create season variable
 dat = dat %>%
@@ -101,7 +101,8 @@ dat = dat %>% rename(
 ) %>%
   select(week_end, state, covid, flu, rsv, season)
 
-dat_combined = dat %>% left_join(ili_data_with_dates, by = c("state", "week_end")) %>%
+dat_combined = dat %>%
+  left_join(ili_data_with_dates, by = c("state", "week_end")) %>%
   rename(ili = unweighted_ili) %>%
   select(-ilitotal)
 
@@ -111,16 +112,14 @@ minmax = function(x) {
 
 dat_combined_ = dat_combined %>% drop_na()
 
-dat_combined_ %>% filter(season == "24-25", state == "Vermont") %>%
-  arrange(week_end)
-
 ## 2. Create modeling functions ----
-# Build function which takes in a dataset and returns the optimal ridge coefficients
-# after using gridsearch for the optimal lambda value
+# Build function which takes in a dataset and returns the optimal ridge
+# coefficients after using gridsearch for the optimal lambda value
 
-ridge_CV = function(data){
+ridge_CV = function(data) {
 
     # Run the ridge regression using glmnet instead of penalized
+    # glmnet is chosen for its efficient implementation and support for cross-validation.
     # Define predictors and outcome
 
     predictors = c("covid_rescaled", "flu_rescaled", "rsv_rescaled")
@@ -145,10 +144,13 @@ ridge_CV = function(data){
 
     # Identify the first lambda where all coefficients are nonzero
     valid_lambda_idx = which(colSums(ridge_coefs != 0) == length(predictors))[1]
+    if (is.null(valid_lambda_idx)) {
+      stop("No valid lambda found where all coefficients are nonzero.")
+    }
     best_lambda = lambda_grid[valid_lambda_idx]
 
     # Fit the final ridge regression with this lambda
-    ridge_final = glmnet(X, y, alpha = 0, lambda = 0.04, intercept = FALSE, lower.limits = 0)
+    ridge_final = glmnet(X, y, alpha = 0, lambda = best_lambda, intercept = FALSE, lower.limits = 0)
 
     # Extract final coefficients
     coef_values = as.numeric(coef(ridge_final))
@@ -213,7 +215,7 @@ nssp_signals_22_23 %>%
     legend.position = 'right',
     strip.text = element_text(size = 9)
   )
-ggsave(file = "figures/nssp_22_23_041425.png", width = 16, height = 10, units = "in", bg = "white")
+ggsave(file = "figures/nssp_22_23_060525.png", width = 16, height = 10, units = "in", bg = "white")
 
 # 23-24 season
 nssp_signals_23_24 = NULL
@@ -270,7 +272,7 @@ nssp_signals_23_24 %>%
     legend.position = 'right',
     strip.text = element_text(size = 9)
   )
-ggsave(file = "figures/nssp_23_24_041425.png", width = 16, height = 10, units = "in", bg = "white")
+ggsave(file = "figures/nssp_23_24_060525.png", width = 16, height = 10, units = "in", bg = "white")
 
 # 24-25 season
 nssp_signals_24_25 = NULL
@@ -328,7 +330,7 @@ nssp_signals_24_25 %>%
     legend.position = 'right',
     strip.text = element_text(size = 9)
   )
-ggsave(file = "figures/nssp_24_25_041425.png", width = 16, height = 10, units = "in", bg = "white")
+ggsave(file = "figures/nssp_24_25_060525.png", width = 16, height = 10, units = "in", bg = "white")
 
 # 4. Generate Figure 1 (3x3 state-season example figure) ----
 
@@ -361,7 +363,7 @@ nssp_all_years %>%
     legend.title = element_blank(),
     legend.position = 'bottom'
   )
-ggsave(file = "figures/3x3_MD_NY_TX_v4.png", height = 8, width = 8, units = "in", bg = "white")
+ggsave(file = "figures/3x3_MD_NY_TX_060525.png", height = 8, width = 8, units = "in", bg = "white")
 
 # 5. Determining temporal order from ridge model results ----
 ## Create helper functions
@@ -497,4 +499,4 @@ nssp_signals_24_25  %>%
 nssp_all_years = nssp_all_years %>% select(week_end, state, season, covid, flu, rsv, ili,
                           contains("rescaled"), contains("beta"), contains("times"))
 
-write_csv(nssp_all_years, file = "data/nssp_all_years_0415.csv")
+write_csv(nssp_all_years, file = "data/nssp_all_years_0605.csv")
