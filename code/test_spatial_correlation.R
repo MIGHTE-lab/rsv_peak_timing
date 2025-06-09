@@ -11,14 +11,6 @@
 ## Last Updated: 2025-06-05
 ## -----------------------------------------------------------------------------
 
-## Load packages
-library(ggplot2)
-library(maps)
-library(dplyr)
-library(viridis)
-library(lubridate)
-library(RColorBrewer)
-
 ## Load data
 flu_dat_23 = read_csv("data/processed/flu_onset_peak_times_23.csv")
 flu_dat_24 = read_csv("data/processed/flu_onset_peak_times_24.csv")
@@ -27,107 +19,176 @@ rsv_dat_24 = read_csv("data/processed/rsv_onset_peak_times_24.csv")
 cov_dat_23 = read_csv("data/processed/cov_onset_peak_times_23.csv")
 cov_dat_24 = read_csv("data/processed/cov_onset_peak_times_24.csv")
 
+# Load required libraries
+library(ggplot2)
+library(maps)
+library(dplyr)
+library(viridis)
+library(lubridate)
+library(RColorBrewer)
+
 # Load state map data
 states_map = map_data("state")
 
 # Function to determine optimal time groupings based on data distribution
-determine_onset_groups = function(flu_data, timing_type = "onset", n_groups = 4) {
+determine_onset_groups = function(disease_data, timing_type = "onset", disease_type = "flu", n_groups = 4) {
   # Choose the timing column
-  timing_col = paste0("flu_", timing_type)
+  timing_col = paste0(disease_type, "_", timing_type)
 
   # Find the earliest date to use as week 0
-  start_date = min(flu_data[[timing_col]], na.rm = TRUE)
+  start_date = min(disease_data[[timing_col]], na.rm = TRUE)
 
   # Calculate weeks from start for each state
-  flu_data = flu_data %>%
+  disease_data = disease_data %>%
     mutate(
       weeks_from_start = as.numeric(difftime(.data[[timing_col]], start_date, units = "weeks")),
       week_number = round(weeks_from_start)
     )
 
-  # Get the range of weeks
-  min_week = min(flu_data$week_number, na.rm = TRUE)
-  max_week = max(flu_data$week_number, na.rm = TRUE)
+  # Get the range of weeks and unique weeks
+  min_week = min(disease_data$week_number, na.rm = TRUE)
+  max_week = max(disease_data$week_number, na.rm = TRUE)
+  unique_weeks = sort(unique(disease_data$week_number))
   week_range = max_week - min_week
 
-  # Determine groupings based on data distribution
+  # Create robust groupings that handle clustered data
   if (timing_type == "onset") {
     # For onset, create meaningful seasonal groups
     breaks = c(-Inf, 4, 12, 20, Inf)
     labels = c("Very Early\n(Weeks 0-4)", "Early\n(Weeks 5-12)",
                "Mid-Season\n(Weeks 13-20)", "Late\n(Weeks 21+)")
-    colors = c("#2166ac", "#5aae61", "#fdae61", "#d73027")  # Blue to red progression
+    colors = c("#2166ac", "#5aae61", "#fdae61", "#d73027")
   } else {
-    # For peaks, use quartile-based groupings
-    quartiles = quantile(flu_data$week_number, probs = c(0, 0.25, 0.5, 0.75, 1), na.rm = TRUE)
-    breaks = c(-Inf, quartiles[2], quartiles[3], quartiles[4], Inf)
-    labels = c(paste0("Earliest\n(Weeks 0-", floor(quartiles[2]), ")"),
-               paste0("Early\n(Weeks ", ceiling(quartiles[2]), "-", floor(quartiles[3]), ")"),
-               paste0("Late\n(Weeks ", ceiling(quartiles[3]), "-", floor(quartiles[4]), ")"),
-               paste0("Latest\n(Weeks ", ceiling(quartiles[4]), "+)"))
+    # For peaks, create adaptive groupings based on actual data distribution
+    if (length(unique_weeks) <= 4) {
+      # If we have 4 or fewer unique weeks, create one group per week
+      breaks = c(-Inf, unique_weeks[-length(unique_weeks)] + 0.5, Inf)
+      labels = paste0("Week ", unique_weeks)
+      colors = colorRampPalette(c("#2166ac", "#d73027"))(length(unique_weeks))
+    } else {
+      # Use equal-interval groupings based on the actual data range
+      interval_size = ceiling(week_range / 4)
+
+      breaks = c(-Inf,
+                 min_week + interval_size,
+                 min_week + 2*interval_size,
+                 min_week + 3*interval_size,
+                 Inf)
+
+      # Ensure breaks are unique by adjusting if necessary
+      for (i in 2:(length(breaks)-1)) {
+        if (breaks[i] == breaks[i-1]) {
+          breaks[i] = breaks[i] + 0.5
+        }
+      }
+
+      labels = c(paste0("Earliest\n(Weeks ", min_week, "-", floor(breaks[2]), ")"),
+                 paste0("Early\n(Weeks ", ceiling(breaks[2]), "-", floor(breaks[3]), ")"),
+                 paste0("Late\n(Weeks ", ceiling(breaks[3]), "-", floor(breaks[4]), ")"),
+                 paste0("Latest\n(Weeks ", ceiling(breaks[4]), "+)"))
+      colors = c("#2166ac", "#5aae61", "#fdae61", "#d73027")
+    }
+  }
+
+  # Final check to ensure breaks are unique
+  if (length(unique(breaks)) != length(breaks)) {
+    # Final fallback: create simple equal-width intervals with guaranteed uniqueness
+    breaks = c(-Inf,
+               min_week + week_range/4 + 0.1,
+               min_week + week_range/2 + 0.2,
+               min_week + 3*week_range/4 + 0.3,
+               Inf)
+    labels = c("Earliest", "Early", "Late", "Latest")
     colors = c("#2166ac", "#5aae61", "#fdae61", "#d73027")
   }
 
   return(list(breaks = breaks, labels = labels, colors = colors, start_date = start_date))
 }
 
-# Create single map showing flu spread timing
-create_flu_spread_timing_map = function(flu_data, timing_type = "onset") {
+determine_onset_groups(flu_dat_24, timing_type = "peak", disease_type = "flu")
+
+# Create single map showing disease spread timing
+create_disease_spread_timing_map = function(disease_data, timing_type = "onset", disease_type = "flu", show_title = TRUE) {
 
   # Get optimal groupings
-  grouping_info = determine_onset_groups(flu_data, timing_type)
+  grouping_info = determine_onset_groups(disease_data, timing_type, disease_type)
 
   # Choose the timing column
-  timing_col = paste0("flu_", timing_type)
+  timing_col = paste0(disease_type, "_", timing_type)
+  season = unique(disease_data$season)[1]  # Extract season from data
 
   # Calculate weeks and create groups
-  flu_data_processed = flu_data %>%
+  disease_data_processed = disease_data %>%
     mutate(
       region = tolower(state),
       weeks_from_start = as.numeric(difftime(.data[[timing_col]], grouping_info$start_date, units = "weeks")),
-      week_number = round(weeks_from_start),
-      timing_group = cut(week_number,
-                         breaks = grouping_info$breaks,
-                         labels = grouping_info$labels,
-                         include.lowest = TRUE),
-      timing_date = .data[[timing_col]]
+      week_number = round(weeks_from_start)
     ) %>%
     arrange(week_number)
 
+  # Create timing groups with error handling
+  tryCatch({
+    disease_data_processed = disease_data_processed %>%
+      mutate(
+        timing_group = cut(week_number,
+                           breaks = grouping_info$breaks,
+                           labels = grouping_info$labels,
+                           include.lowest = TRUE),
+        timing_date = .data[[timing_col]]
+      )
+  }, error = function(e) {
+    # Fallback: create simple equal groups if cut() fails
+    disease_data_processed <<- disease_data_processed %>%
+      mutate(
+        timing_group = case_when(
+          week_number <= quantile(week_number, 0.25, na.rm = TRUE) ~ "Earliest",
+          week_number <= quantile(week_number, 0.5, na.rm = TRUE) ~ "Early",
+          week_number <= quantile(week_number, 0.75, na.rm = TRUE) ~ "Late",
+          TRUE ~ "Latest"
+        ),
+        timing_date = .data[[timing_col]]
+      )
+
+    # Update grouping info for fallback
+    grouping_info$colors <<- c("#2166ac", "#5aae61", "#fdae61", "#d73027")
+  })
+
   # Join with map data
-  map_data = left_join(states_map, flu_data_processed, by = "region", relationship = "many-to-many")
+  map_data = left_join(states_map, disease_data_processed, by = "region", relationship = "many-to-many")
 
   # Create the map
   p = ggplot(map_data, aes(x = long, y = lat, group = group)) +
     geom_polygon(aes(fill = timing_group), color = "white", linewidth = 0.4) +
     scale_fill_manual(
       values = grouping_info$colors,
-      name = paste("Flu", str_to_title(timing_type), "\nTiming"),
+      name = paste(str_to_upper(disease_type), str_to_title(timing_type), "\nTiming"),
       na.value = "lightgray"
     ) +
     coord_fixed(1.3) +
     theme_void() +
     theme(
-      plot.title = element_text(hjust = 0.5, size = 16, face = "bold", margin = margin(b = 10)),
-      plot.subtitle = element_text(hjust = 0.5, size = 12, margin = margin(b = 15)),
       legend.position = "right",
       legend.key.size = unit(0.8, "cm"),
       legend.text = element_text(size = 10),
       legend.title = element_text(size = 12, face = "bold"),
       plot.margin = margin(20, 20, 20, 20)
-    ) +
-    labs(
-      title = paste("Geographic Pattern of Flu", str_to_title(timing_type), "Spread: 2023-24 Season"),
-      subtitle = paste("Week 0 reference:", format(grouping_info$start_date, "%B %d, %Y"),
-                       "| Total spread duration:", max(flu_data_processed$week_number, na.rm = TRUE), "weeks")
     )
 
-  # Add state labels for key early and late states
-  state_centers = flu_data_processed %>%
-    filter(state %in% c("Florida", "Delaware", "Connecticut")) %>%  # Example key states
-    select(state, week_number)
+  # Conditionally add titles
+  if (show_title) {
+    p = p +
+      theme(
+        plot.title = element_text(hjust = 0.5, size = 16, face = "bold", margin = margin(b = 10)),
+        plot.subtitle = element_text(hjust = 0.5, size = 12, margin = margin(b = 15))
+      ) +
+      labs(
+        title = paste("Geographic Pattern of", str_to_upper(disease_type), str_to_title(timing_type), "Spread:", season, "Season"),
+        subtitle = paste("Week 0 reference:", format(grouping_info$start_date, "%B %d, %Y"),
+                         "| Total spread duration:", max(disease_data_processed$week_number, na.rm = TRUE), "weeks")
+      )
+  }
 
-  return(list(map = p, data = flu_data_processed, grouping = grouping_info))
+  return(list(map = p, data = disease_data_processed, grouping = grouping_info))
 }
 
 # Create summary statistics table
@@ -147,15 +208,16 @@ create_spread_summary_table = function(flu_data_processed) {
 }
 
 # Alternative version with more granular weekly coloring
-create_weekly_gradient_map = function(flu_data, timing_type = "onset") {
+create_weekly_gradient_map = function(disease_data, timing_type = "onset", disease_type = "flu", show_title = TRUE) {
   # Choose the timing column
-  timing_col = paste0("flu_", timing_type)
+  timing_col = paste0(disease_type, "_", timing_type)
+  season = unique(disease_data$season)[1]  # Extract season from data
 
   # Find the earliest date
-  start_date = min(flu_data[[timing_col]], na.rm = TRUE)
+  start_date = min(disease_data[[timing_col]], na.rm = TRUE)
 
   # Calculate weeks and prepare data
-  flu_data_processed = flu_data %>%
+  disease_data_processed = disease_data %>%
     mutate(
       region = tolower(state),
       weeks_from_start = as.numeric(difftime(.data[[timing_col]], start_date, units = "weeks")),
@@ -163,7 +225,7 @@ create_weekly_gradient_map = function(flu_data, timing_type = "onset") {
     )
 
   # Join with map data
-  map_data = left_join(states_map, flu_data_processed, by = "region", relationship = "many-to-many")
+  map_data = left_join(states_map, disease_data_processed, by = "region", relationship = "many-to-many")
 
   # Create gradient map
   p = ggplot(map_data, aes(x = long, y = lat, group = group)) +
@@ -178,34 +240,100 @@ create_weekly_gradient_map = function(flu_data, timing_type = "onset") {
     coord_fixed(1.3) +
     theme_void() +
     theme(
-      plot.title = element_text(hjust = 0.5, size = 16, face = "bold", margin = margin(b = 10)),
-      plot.subtitle = element_text(hjust = 0.5, size = 12, margin = margin(b = 15)),
       legend.position = "right",
       legend.title = element_text(size = 12, face = "bold"),
       plot.margin = margin(20, 20, 20, 20)
-    ) +
-    labs(
-      title = paste("Flu", str_to_title(timing_type), "Timing Across US States: 2023-24"),
-      subtitle = paste("Week 0 =", format(start_date, "%B %d, %Y"),
-                       "| Darker colors = later", timing_type)
     )
+
+  # Conditionally add titles
+  if (show_title) {
+    p = p +
+      theme(
+        plot.title = element_text(hjust = 0.5, size = 16, face = "bold", margin = margin(b = 10)),
+        plot.subtitle = element_text(hjust = 0.5, size = 12, margin = margin(b = 15))
+      ) +
+      labs(
+        title = paste(str_to_upper(disease_type), str_to_title(timing_type), "Timing Across US States:", season, "Season"),
+        subtitle = paste("Week 0 =", format(start_date, "%B %d, %Y"),
+                         "| Darker colors = later", timing_type)
+      )
+  }
 
   return(p)
 }
 
-# Usage with your flu_dat_23 data:
 
+# Maps for each disease/season
+
+# Flu - 23-24 season
 # 1. Create the main categorical timing map for ONSET
-flu_onset_map_result = create_flu_spread_timing_map(flu_dat_23, timing_type = "onset")
-print(flu_onset_map_result$map)
+flu_onset_23_timing = create_disease_spread_timing_map(flu_dat_23, timing_type = "onset", show_title = FALSE)
+print(flu_onset_23_timing$map)
 
 # 2. Create the main categorical timing map for PEAK
-flu_peak_map_result = create_flu_spread_timing_map(flu_dat_23, timing_type = "peak")
-print(flu_peak_map_result$map)
+flu_peak_23_timing = create_disease_spread_timing_map(flu_dat_23, timing_type = "peak")
+print(flu_peak_23_timing$map)
 
-# 3. Create gradient version for more detailed view
-flu_onset_gradient = create_weekly_gradient_map(flu_dat_23, timing_type = "onset")
-print(flu_onset_gradient)
+# 3. Create gradient version for ONSET
+flu_onset_23_gradient = create_weekly_gradient_map(flu_dat_23, timing_type = "onset")
+print(flu_onset_23_gradient)
+
+# 4. Check gradient version for PEAKS
+flu_peak_23_gradient = create_weekly_gradient_map(flu_dat_23, timing_type = "peak")
+print(flu_peak_23_gradient)
+
+# Flu - 24-25 season
+# 1. Create the main categorical timing map for ONSET
+flu_onset_24_timing = create_disease_spread_timing_map(flu_dat_24, timing_type = "onset")
+print(flu_onset_24_timing$map)
+
+# 2. Create the main categorical timing map for PEAK
+flu_peak_24_timing = create_disease_spread_timing_map(flu_dat_24, timing_type = "peak")
+print(flu_peak_24_timing$map)
+
+# 3. Onsets gradient
+flu_onset_24_gradient = create_weekly_gradient_map(flu_dat_24, timing_type = "onset")
+print(flu_onset_24_gradient)
+
+# 4. Peaks gradient
+flu_peaks_24_gradient = create_weekly_gradient_map(flu_dat_24, timing_type = "peak")
+print(flu_peaks_24_gradient)
+
+# RSV - 23-24 season
+# Onset
+rsv_onset_23_timing = create_disease_spread_timing_map(rsv_dat_23, disease_type = "rsv", timing_type = "onset")
+print(rsv_onset_23_timing$map)
+
+# Peak
+rsv_peak_23_timing = create_disease_spread_timing_map(rsv_dat_23, disease_type = "rsv", timing_type = "peak")
+print(rsv_peak_23_timing$map)
+
+# Onset gradient
+rsv_onset_23_gradient = create_weekly_gradient_map(rsv_dat_23, disease_type = "rsv", timing_type = "onset")
+print(rsv_onset_23_gradient)
+
+# Peak gradient
+rsv_peak_23_gradient = create_weekly_gradient_map(rsv_dat_23, disease_type = "rsv", timing_type = "peak")
+print(rsv_peak_23_gradient)
+
+# RSV - 24-26 season
+# Onset
+rsv_onset_24_timing = create_disease_spread_timing_map(rsv_dat_24, disease_type = "rsv", timing_type = "onset")
+print(rsv_onset_24_timing$map)
+
+# Peak
+rsv_peak_24_timing = create_disease_spread_timing_map(rsv_dat_24, disease_type = "rsv", timing_type = "peak")
+print(rsv_peak_24_timing$map)
+
+# Onset gradient
+rsv_onset_24_gradient = create_weekly_gradient_map(rsv_dat_24, disease_type = "rsv", timing_type = "onset")
+print(rsv_onset_24_gradient)
+
+# Peak gradient
+rsv_peak_24_gradient = create_weekly_gradient_map(rsv_dat_24, disease_type = "rsv", timing_type = "peak")
+print(rsv_peak_24_gradient)
+
+## Next step is to combine all these together into a pub-ready version (and share and discuss)
 
 # 4. Print summary statistics
 cat("ONSET TIMING SUMMARY:\n")

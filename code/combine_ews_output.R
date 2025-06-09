@@ -7,7 +7,7 @@
 ##
 ## Date Created: 2025-04-23
 ##
-## Last Updated: 2025-04-23
+## Last Updated: 2025-06-09
 ## -----------------------------------------------------------------------------
 
 library(tidyverse)
@@ -18,12 +18,12 @@ library(lubridate)
 
 flu_onsets1 = read_csv("data/early_warning/windows/flu_times_coef.csv") %>% select(-...1)
 flu_onsets2 = read_csv("data/early_warning/windows_/flu_times_coef_040725.csv") %>% select(-...1)
+flu_onsets3 = read_csv('data/early_warning/flu_onsets_060425.csv') %>% select(-...1)
+
 
 # Add the season var to onsets as well (based on start_date)
 flu_peaks1 = read_csv("data/early_warning/peaks/flu_times_coef.csv") %>% select(-c(...1, date_detected))
 flu_peaks2 = read_csv("data/early_warning/peaks_042425/flu_times_coef_041525.csv") %>% select(-c(...1, date_detected))
-
-flu_peaks2
 
 flu_peaks_all = bind_rows(flu_peaks1, flu_peaks2) %>%
   distinct()
@@ -41,9 +41,7 @@ flu_peaks_all = flu_peaks_all %>%
   ) %>%
   select(-c(year, month))
 
-flu_peaks_all
-
-flu_onsets_all = bind_rows(flu_onsets1, flu_onsets2) %>% distinct()
+flu_onsets_all = bind_rows(flu_onsets1, flu_onsets2, flu_onsets3) %>% distinct()
 
 flu_onsets_all = flu_onsets_all %>%
   mutate(
