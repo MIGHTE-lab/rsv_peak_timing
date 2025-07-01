@@ -100,54 +100,16 @@ match_onsets_to_peaks <- function(onsets_df, peaks_df) {
   return(matches_out)
 }
 
-
-# match_peaks_with_onsets = function(peaks_data, onsets_data) {
-#   # Ensure consistent column naming
-#   peaks_data = peaks_data %>%
-#     rename(state = name_proxy) %>%
-#     select(state, date_peak, season)
-#
-#   onsets_data = onsets_data %>%
-#     rename(state = name_proxy, onset_date = start_date) %>%
-#     select(state, onset_date, end_date, season)
-#
-#   # Cross join datasets by state and season
-#   matched = peaks_data %>%
-#     inner_join(onsets_data, by = c("state", "season"), relationship = "many-to-many") %>%
-#     # Calculate time difference in days
-#     mutate(
-#       time_diff = as.numeric(difftime(date_peak, onset_date, units = "days")),
-#       # Only consider onsets before peaks (positive time_diff)
-#       valid_match = time_diff > 0
-#     ) %>%
-#     # Filter to keep only valid matches (peaks after onsets)
-#     filter(valid_match) %>%
-#     # For each peak, find the closest preceding onset
-#     group_by(state, season, date_peak) %>%
-#     slice_min(time_diff, n = 1) %>%
-#     # For each onset, find the closest following peak
-#     group_by(state, season, onset_date, end_date) %>%
-#     slice_min(time_diff, n = 1) %>%
-#     ungroup() %>%
-#     # Convert to weeks for analysis
-#     mutate(weeks_between = time_diff / 7) %>%
-#     select(state, season, onset_date, end_date, date_peak, weeks_between)
-#
-#   return(matched)
-# }
-
 # Apply the function
 flu_matched = match_onsets_to_peaks(onsets_df = flu_onsets_all,
                                     peaks_df = flu_peaks_all)
 flu_matched %>%
   group_by(name_location, season) %>% tally()
 
-flu_matched
-
-write_csv(flu_matched, "data/early_warning/flu_matched_peaks_onsets2.csv")
+write_csv(flu_matched, "data/early_warning/flu_matched_peaks_onsets.csv")
 
 # RSV data
-rsv_onsets = read_csv("early_warning/windows_/rsv_times_coef_040725.csv") %>%
+rsv_onsets = read_csv("data/early_warning/windows_/rsv_times_coef_040725.csv") %>%
   select(-c(...1)) %>%
   mutate(
     year = year(start_date),
@@ -161,10 +123,9 @@ rsv_onsets = read_csv("early_warning/windows_/rsv_times_coef_040725.csv") %>%
   ) %>%
   select(-c(year, month))
 
-rsv_peaks1 = read_csv("early_warning/peaks_042425/rsv_times_coef_041525.csv")
-rsv_peaks2 = read_csv("early_warning/peaks/rsv_times_coef.csv")
+rsv_peaks = read_csv("data/early_warning/peaks_rsv.csv")
 
-rsv_peaks = bind_rows(rsv_peaks1, rsv_peaks2) %>% distinct() %>%
+rsv_peaks = rsv_peaks %>% distinct() %>%
   select(name_proxy, date_peak) %>%
   mutate(
     year = year(date_peak),
@@ -218,7 +179,9 @@ rsv_matched = match_rsv_peaks_with_onsets(rsv_peaks, rsv_onsets)
 
 rsv_matched = rsv_matched %>% distinct()
 
-write_csv(rsv_matched, file = "early_warning/rsv_matched_peaks_onsets.csv")
+rsv_matched
+
+write_csv(rsv_matched, file = "data/early_warning/rsv_matched_peaks_onsets.csv")
 
 # COVID data
 # Flu Data

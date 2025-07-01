@@ -20,12 +20,12 @@ cov_dat_23 = read_csv("data/processed/cov_onset_peak_times_23.csv")
 cov_dat_24 = read_csv("data/processed/cov_onset_peak_times_24.csv")
 
 # Load required libraries
-library(ggplot2)
+library(tidyverse)
 library(maps)
-library(dplyr)
 library(viridis)
 library(lubridate)
 library(RColorBrewer)
+library(patchwork)
 
 # Load state map data
 states_map = map_data("state")
@@ -109,7 +109,9 @@ determine_onset_groups(flu_dat_24, timing_type = "peak", disease_type = "flu")
 
 # Create single map showing disease spread timing
 create_disease_spread_timing_map = function(disease_data, timing_type = "onset", disease_type = "flu", show_title = TRUE) {
-
+  disease_data = rsv_dat_23
+  disease_type = "rsv"
+  timing_type = "onset"
   # Get optimal groupings
   grouping_info = determine_onset_groups(disease_data, timing_type, disease_type)
 
@@ -152,7 +154,6 @@ create_disease_spread_timing_map = function(disease_data, timing_type = "onset",
     # Update grouping info for fallback
     grouping_info$colors <<- c("#2166ac", "#5aae61", "#fdae61", "#d73027")
   })
-
   # Join with map data
   map_data = left_join(states_map, disease_data_processed, by = "region", relationship = "many-to-many")
 
@@ -167,12 +168,13 @@ create_disease_spread_timing_map = function(disease_data, timing_type = "onset",
     coord_fixed(1.3) +
     theme_void() +
     theme(
-      legend.position = "right",
+      legend.position = "bottom",
       legend.key.size = unit(0.8, "cm"),
       legend.text = element_text(size = 10),
       legend.title = element_text(size = 12, face = "bold"),
       plot.margin = margin(20, 20, 20, 20)
     )
+  p
 
   # Conditionally add titles
   if (show_title) {
@@ -206,15 +208,36 @@ create_spread_summary_table = function(flu_data_processed) {
 
   return(summary_table)
 }
-
 # Alternative version with more granular weekly coloring
 create_weekly_gradient_map = function(disease_data, timing_type = "onset", disease_type = "flu", show_title = TRUE) {
   # Choose the timing column
   timing_col = paste0(disease_type, "_", timing_type)
   season = unique(disease_data$season)[1]  # Extract season from data
 
-  # Find the earliest date
-  start_date = min(disease_data[[timing_col]], na.rm = TRUE)
+  # Set fixed start date based on season and timing type
+  if (timing_type == "onset") {
+    # For onsets, use June 1st
+    if (season == "23-24") {
+      start_date = as.Date("2023-06-01")
+    } else if (season == "24-25") {
+      start_date = as.Date("2024-06-01")
+    } else {
+      # Fallback for other seasons - extract year from season and set June 1st
+      year = as.numeric(paste0("20", substr(season, 1, 2)))
+      start_date = as.Date(paste0(year, "-06-01"))
+    }
+  } else {
+    # For peaks, use October 1st
+    if (season == "23-24") {
+      start_date = as.Date("2023-10-01")
+    } else if (season == "24-25") {
+      start_date = as.Date("2024-10-01")
+    } else {
+      # Fallback for other seasons - extract year from season and set October 1st
+      year = as.numeric(paste0("20", substr(season, 1, 2)))
+      start_date = as.Date(paste0(year, "-10-01"))
+    }
+  }
 
   # Calculate weeks and prepare data
   disease_data_processed = disease_data %>%
@@ -227,15 +250,25 @@ create_weekly_gradient_map = function(disease_data, timing_type = "onset", disea
   # Join with map data
   map_data = left_join(states_map, disease_data_processed, by = "region", relationship = "many-to-many")
 
-  # Create gradient map
+  # Create gradient map with fixed scale for comparability
+  # Set consistent scale limits across all disease/timing combinations
+  # Assuming flu season typically spans from June to May (52 weeks max)
+
+  # Range is smaller for peaks vs onsets
+  if (timing_type == "onset") {
+    limits_vec = c(0, 30)
+  } else {
+    limits_vec = c(0, 30)
+  }
   p = ggplot(map_data, aes(x = long, y = lat, group = group)) +
     geom_polygon(aes(fill = week_number), color = "white", linewidth = 0.4) +
     scale_fill_viridis_c(
-      name = paste("Week of\n", str_to_title(timing_type)),
+      name = paste("Week from\n", ifelse(timing_type == "onset", "June 1st", "November 1st")),
       option = "plasma",
       direction = 1,
       na.value = "lightgray",
-      guide = guide_colorbar(barwidth = 1, barheight = 8)
+      limits = limits_vec,  # Scale depends on onsets or peaks selection
+      guide = guide_colorbar(barwidth = 15, barheight = 0.8, direction = "horizontal")
     ) +
     coord_fixed(1.3) +
     theme_void() +
@@ -254,105 +287,181 @@ create_weekly_gradient_map = function(disease_data, timing_type = "onset", disea
       ) +
       labs(
         title = paste(str_to_upper(disease_type), str_to_title(timing_type), "Timing Across US States:", season, "Season"),
-        subtitle = paste("Week 0 =", format(start_date, "%B %d, %Y"),
-                         "| Darker colors = later", timing_type)
+        subtitle = paste("Week 0 =", ifelse(timing_type == "onset", "June 1st", "October 1st"),
+                         substr(season, 1, 2), "| Darker colors = later", timing_type)
       )
   }
 
   return(p)
 }
 
-
 # Maps for each disease/season
 
 # Flu - 23-24 season
-# 1. Create the main categorical timing map for ONSET
-flu_onset_23_timing = create_disease_spread_timing_map(flu_dat_23, timing_type = "onset", show_title = FALSE)
-print(flu_onset_23_timing$map)
-
-# 2. Create the main categorical timing map for PEAK
-flu_peak_23_timing = create_disease_spread_timing_map(flu_dat_23, timing_type = "peak")
-print(flu_peak_23_timing$map)
+# # 1. Create the main categorical timing map for ONSET
+# flu_onset_23_timing = create_disease_spread_timing_map(flu_dat_23, timing_type = "onset", show_title = FALSE)
+# print(flu_onset_23_timing$map)
+#
+# # 2. Create the main categorical timing map for PEAK
+# flu_peak_23_timing = create_disease_spread_timing_map(flu_dat_23, timing_type = "peak", show_title = FALSE)
+# print(flu_peak_23_timing$map)
 
 # 3. Create gradient version for ONSET
-flu_onset_23_gradient = create_weekly_gradient_map(flu_dat_23, timing_type = "onset")
+flu_onset_23_gradient = create_weekly_gradient_map(flu_dat_23, timing_type = "onset", show_title = FALSE)
 print(flu_onset_23_gradient)
 
 # 4. Check gradient version for PEAKS
-flu_peak_23_gradient = create_weekly_gradient_map(flu_dat_23, timing_type = "peak")
+flu_peak_23_gradient = create_weekly_gradient_map(flu_dat_23, timing_type = "peak", show_title = FALSE)
 print(flu_peak_23_gradient)
 
 # Flu - 24-25 season
-# 1. Create the main categorical timing map for ONSET
-flu_onset_24_timing = create_disease_spread_timing_map(flu_dat_24, timing_type = "onset")
-print(flu_onset_24_timing$map)
-
-# 2. Create the main categorical timing map for PEAK
-flu_peak_24_timing = create_disease_spread_timing_map(flu_dat_24, timing_type = "peak")
-print(flu_peak_24_timing$map)
+# # 1. Create the main categorical timing map for ONSET
+# flu_onset_24_timing = create_disease_spread_timing_map(flu_dat_24, timing_type = "onset", show_title = FALSE)
+# print(flu_onset_24_timing$map)
+#
+# # 2. Create the main categorical timing map for PEAK
+# flu_peak_24_timing = create_disease_spread_timing_map(flu_dat_24, timing_type = "peak", show_title = FALSE)
+# print(flu_peak_24_timing$map)
 
 # 3. Onsets gradient
-flu_onset_24_gradient = create_weekly_gradient_map(flu_dat_24, timing_type = "onset")
+flu_onset_24_gradient = create_weekly_gradient_map(flu_dat_24, timing_type = "onset", show_title = FALSE)
 print(flu_onset_24_gradient)
 
 # 4. Peaks gradient
-flu_peaks_24_gradient = create_weekly_gradient_map(flu_dat_24, timing_type = "peak")
+flu_peaks_24_gradient = create_weekly_gradient_map(flu_dat_24, timing_type = "peak", show_title = FALSE)
 print(flu_peaks_24_gradient)
 
 # RSV - 23-24 season
-# Onset
-rsv_onset_23_timing = create_disease_spread_timing_map(rsv_dat_23, disease_type = "rsv", timing_type = "onset")
-print(rsv_onset_23_timing$map)
-
-# Peak
-rsv_peak_23_timing = create_disease_spread_timing_map(rsv_dat_23, disease_type = "rsv", timing_type = "peak")
-print(rsv_peak_23_timing$map)
+# # Onset
+# rsv_onset_23_timing = create_disease_spread_timing_map(rsv_dat_23, disease_type = "rsv", timing_type = "onset", show_title = FALSE)
+# print(rsv_onset_23_timing$map)
+#
+# # Peak
+# rsv_peak_23_timing = create_disease_spread_timing_map(rsv_dat_23, disease_type = "rsv", timing_type = "peak", show_title = FALSE)
+# print(rsv_peak_23_timing$map)
 
 # Onset gradient
-rsv_onset_23_gradient = create_weekly_gradient_map(rsv_dat_23, disease_type = "rsv", timing_type = "onset")
+rsv_onset_23_gradient = create_weekly_gradient_map(rsv_dat_23, disease_type = "rsv", timing_type = "onset", show_title = FALSE)
 print(rsv_onset_23_gradient)
 
 # Peak gradient
-rsv_peak_23_gradient = create_weekly_gradient_map(rsv_dat_23, disease_type = "rsv", timing_type = "peak")
+rsv_peak_23_gradient = create_weekly_gradient_map(rsv_dat_23, disease_type = "rsv", timing_type = "peak", show_title = FALSE)
 print(rsv_peak_23_gradient)
 
-# RSV - 24-26 season
+# RSV - 24-25 season
 # Onset
-rsv_onset_24_timing = create_disease_spread_timing_map(rsv_dat_24, disease_type = "rsv", timing_type = "onset")
-print(rsv_onset_24_timing$map)
-
-# Peak
-rsv_peak_24_timing = create_disease_spread_timing_map(rsv_dat_24, disease_type = "rsv", timing_type = "peak")
-print(rsv_peak_24_timing$map)
+# rsv_onset_24_timing = create_disease_spread_timing_map(rsv_dat_24, disease_type = "rsv", timing_type = "onset", show_title = FALSE)
+# print(rsv_onset_24_timing$map)
+#
+# # Peak
+# rsv_peak_24_timing = create_disease_spread_timing_map(rsv_dat_24, disease_type = "rsv", timing_type = "peak", show_title = FALSE)
+# print(rsv_peak_24_timing$map)
 
 # Onset gradient
-rsv_onset_24_gradient = create_weekly_gradient_map(rsv_dat_24, disease_type = "rsv", timing_type = "onset")
+rsv_onset_24_gradient = create_weekly_gradient_map(rsv_dat_24, disease_type = "rsv", timing_type = "onset", show_title = FALSE)
 print(rsv_onset_24_gradient)
 
 # Peak gradient
-rsv_peak_24_gradient = create_weekly_gradient_map(rsv_dat_24, disease_type = "rsv", timing_type = "peak")
+rsv_peak_24_gradient = create_weekly_gradient_map(rsv_dat_24, disease_type = "rsv", timing_type = "peak", show_title = FALSE)
 print(rsv_peak_24_gradient)
 
 ## Next step is to combine all these together into a pub-ready version (and share and discuss)
 
-# 4. Print summary statistics
-cat("ONSET TIMING SUMMARY:\n")
-onset_summary = create_spread_summary_table(flu_onset_map_result$data)
-print(onset_summary)
+## For direct comparison, we can put peaks/onsets for flu+rsv in one season on the same figure since they will have the same start point
 
-cat("\nPEAK TIMING SUMMARY:\n")
-peak_summary = create_spread_summary_table(flu_peak_map_result$data)
-print(peak_summary)
+# Supplementary Figure 11a - 2023-24 season onsets
+flu_onset_23_gradient + rsv_onset_23_gradient +
+  plot_layout(guides = "collect") +
+  plot_annotation(tag_levels = list(c("Flu", "RSV")),
+                  title = "23-24 season Onsets") &
+  theme(plot.tag = element_text(size = 10),
+        legend.position = "bottom",
+        legend.direction = "horizontal")
 
-# 5. Show the earliest and latest states
-cat("\nKEY TIMING INSIGHTS:\n")
-timing_extremes = flu_onset_map_result$data %>%
-  arrange(week_number) %>%
-  select(state, timing_date, week_number)
+# Supplementary Figure 11b - 2023-24 season peaks
+flu_peak_23_gradient + rsv_peak_23_gradient +
+  plot_layout(guides = "collect") +
+  plot_annotation(tag_levels = list(c("Flu", "RSV")),
+                  title = "23-24 season Peaks") &
+  theme(plot.tag = element_text(size = 10),
+        legend.position = "bottom",
+        legend.direction = "horizontal")
 
-cat("Earliest onset:", timing_extremes$state[1], "- Week", timing_extremes$week_number[1],
-    "(", format(timing_extremes$timing_date[1], "%B %d"), ")\n")
-cat("Latest onset:", timing_extremes$state[nrow(timing_extremes)], "- Week",
-    timing_extremes$week_number[nrow(timing_extremes)],
-    "(", format(timing_extremes$timing_date[nrow(timing_extremes)], "%B %d"), ")\n")
-cat("Total spread duration:", max(timing_extremes$week_number) - min(timing_extremes$week_number), "weeks\n")
+# Supplementary Figure 11c - 2024-25 season onsets
+flu_onset_24_gradient + rsv_onset_24_gradient +
+  plot_layout(guides = "collect") +
+  plot_annotation(tag_levels = list(c("Flu", "RSV")),
+                  title = "24-25 season Onsets") &
+  theme(plot.tag = element_text(size = 10),
+        legend.position = "bottom",
+        legend.direction = "horizontal")
+
+# Supplementary Figure 11b - 2024-25 season peaks
+flu_peak_24_gradient + rsv_peak_24_gradient +
+  plot_layout(guides = "collect") +
+  plot_annotation(tag_levels = list(c("Flu", "RSV")),
+                  title = "23-24 season Peaks") &
+  theme(plot.tag = element_text(size = 10),
+        legend.position = "bottom",
+        legend.direction = "horizontal")
+
+
+
+# ## Combined figures
+# ## 23-24 Flu
+# (flu_onset_23_timing$map / flu_peak_23_timing$map) +
+#   plot_annotation(title = "2023-24 Flu Onsets and Peak Timing")
+# ggsave("figures/manuscript_figures/supplementary/flu_23_24_onsets_peak_map.png", height = 10, width = 8, units = "in", bg = "white")
+#
+# ## 23-24 Flu gradient
+# (flu_onset_23_gradient / flu_peak_23_gradient) +
+#   plot_annotation(title = "2023-24 Flu Onsets and Peak Timing - Gradient")
+# getwd()
+# ## 23-24 RSV
+# (rsv_onset_23_timing$map / rsv_peak_23_timing$map) +
+#   plot_annotation(title = "2023-24 RSV Onsets and Peak Timing")
+# ggsave("figures/manuscript_figures/supplementary/rsv_23_24_onsets_peak_map.png", height = 10, width = 8, units = "in", bg = "white")
+#
+# ## 23-24 RSV gradient
+# (rsv_onset_23_gradient / rsv_peak_23_gradient) +
+#   plot_annotation(title = "2023-24 RSV Onsets and Peak Timing - Gradient")
+#
+# ## 24-25 Flu
+# (flu_onset_24_timing$map / flu_peak_24_timing$map) +
+#   plot_annotation(title = "2024-25 Flu Onsets and Peak Timing")
+# ggsave("figures/manuscript_figures/supplementary/flu_24_25_onsets_peak_map.png", height = 10, width = 8, units = "in", bg = "white")
+#
+# ## 24-25 Flu gradient
+# (flu_onset_24_gradient / flu_peaks_24_gradient) +
+#   plot_annotation(title = "2024-25 Flu Onsets and Peak Timing - Gradient")
+#
+# ## 24-25 RSV
+# (rsv_onset_24_timing$map / rsv_peak_24_timing$map) +
+#   plot_annotation(title = "2024-25 RSV Onsets and Peak Timing")
+# ggsave("figures/manuscript_figures/supplementary/rsv_24_25_onsets_peak_map.png", height = 10, width = 8, units = "in", bg = "white")
+#
+# ## 24-25 RSV gradient
+# (rsv_onset_24_gradient / rsv_peak_24_gradient) +
+#   plot_annotation(title = "2024-25 RSV Onsets and Peak Timing - Gradient")
+
+# # 4. Print summary statistics
+# cat("ONSET TIMING SUMMARY:\n")
+# onset_summary = create_spread_summary_table(flu_onset_map_result$data)
+# print(onset_summary)
+#
+# cat("\nPEAK TIMING SUMMARY:\n")
+# peak_summary = create_spread_summary_table(flu_peak_map_result$data)
+# print(peak_summary)
+#
+# # 5. Show the earliest and latest states
+# cat("\nKEY TIMING INSIGHTS:\n")
+# timing_extremes = flu_onset_map_result$data %>%
+#   arrange(week_number) %>%
+#   select(state, timing_date, week_number)
+#
+# cat("Earliest onset:", timing_extremes$state[1], "- Week", timing_extremes$week_number[1],
+#     "(", format(timing_extremes$timing_date[1], "%B %d"), ")\n")
+# cat("Latest onset:", timing_extremes$state[nrow(timing_extremes)], "- Week",
+#     timing_extremes$week_number[nrow(timing_extremes)],
+#     "(", format(timing_extremes$timing_date[nrow(timing_extremes)], "%B %d"), ")\n")
+# cat("Total spread duration:", max(timing_extremes$week_number) - min(timing_extremes$week_number), "weeks\n")
