@@ -11,6 +11,7 @@
 ## Last Updated: 2025-06-05
 ## -----------------------------------------------------------------------------
 
+# 1. Setup ---------------------------------------------------------------------
 ## Load data
 flu_dat_23 = read_csv("data/processed/flu_onset_peak_times_23.csv")
 flu_dat_24 = read_csv("data/processed/flu_onset_peak_times_24.csv")
@@ -29,6 +30,8 @@ library(patchwork)
 
 # Load state map data
 states_map = map_data("state")
+
+# 2. Main functions ------------------------------------------------------------
 
 # Function to determine optimal time groupings based on data distribution
 determine_onset_groups = function(disease_data, timing_type = "onset", disease_type = "flu", n_groups = 4) {
@@ -216,26 +219,26 @@ create_weekly_gradient_map = function(disease_data, timing_type = "onset", disea
 
   # Set fixed start date based on season and timing type
   if (timing_type == "onset") {
-    # For onsets, use June 1st
+    # For onsets, use August 1st
     if (season == "23-24") {
-      start_date = as.Date("2023-06-01")
+      start_date = as.Date("2023-08-01")
     } else if (season == "24-25") {
-      start_date = as.Date("2024-06-01")
+      start_date = as.Date("2024-08-01")
     } else {
       # Fallback for other seasons - extract year from season and set June 1st
       year = as.numeric(paste0("20", substr(season, 1, 2)))
-      start_date = as.Date(paste0(year, "-06-01"))
+      start_date = as.Date(paste0(year, "-08-01"))
     }
   } else {
-    # For peaks, use October 1st
+    # For peaks, use December 1st
     if (season == "23-24") {
-      start_date = as.Date("2023-10-01")
+      start_date = as.Date("2023-11-01")
     } else if (season == "24-25") {
-      start_date = as.Date("2024-10-01")
+      start_date = as.Date("2024-11-01")
     } else {
       # Fallback for other seasons - extract year from season and set October 1st
       year = as.numeric(paste0("20", substr(season, 1, 2)))
-      start_date = as.Date(paste0(year, "-10-01"))
+      start_date = as.Date(paste0(year, "-12-01"))
     }
   }
 
@@ -254,28 +257,46 @@ create_weekly_gradient_map = function(disease_data, timing_type = "onset", disea
   # Set consistent scale limits across all disease/timing combinations
   # Assuming flu season typically spans from June to May (52 weeks max)
 
-  # Range is smaller for peaks vs onsets
+  # Range is smaller for peaks vs onsets - Scale depends on onsets or peaks selection
   if (timing_type == "onset") {
-    limits_vec = c(0, 30)
+    limits_vec = c(0, 20)
   } else {
-    limits_vec = c(0, 30)
+    limits_vec = c(2, 10)
   }
+
+  # Different color palette for onsets or peaks
+  if (timing_type == "onset") {
+    palette_option = "plasma"
+  } else {
+    palette_option = "viridis"
+  }
+
+  # Different label based on season selection
+
+
   p = ggplot(map_data, aes(x = long, y = lat, group = group)) +
     geom_polygon(aes(fill = week_number), color = "white", linewidth = 0.4) +
     scale_fill_viridis_c(
-      name = paste("Week from\n", ifelse(timing_type == "onset", "June 1st", "November 1st")),
-      option = "plasma",
-      direction = 1,
+      name = paste("Week from\n", ifelse(timing_type == "onset", "August 1st", "October 1st")),
+      option = palette_option,
+      direction = -1,
       na.value = "lightgray",
-      limits = limits_vec,  # Scale depends on onsets or peaks selection
+      limits = limits_vec,
+      oob = scales::squish,
+      labels = function(x) {
+        # Create custom labels with "+" for maximum values
+        max_val = ifelse(timing_type == "onset", 20, 10)
+        ifelse(x == max_val, paste0(x, "+"), as.character(x))
+      },# This line handles out-of-bounds values
       guide = guide_colorbar(barwidth = 15, barheight = 0.8, direction = "horizontal")
     ) +
     coord_fixed(1.3) +
     theme_void() +
     theme(
       legend.position = "right",
-      legend.title = element_text(size = 12, face = "bold"),
+      legend.title = element_text(size = 12, face = "bold", hjust = 0),  # Added hjust = 0
       plot.margin = margin(20, 20, 20, 20)
+
     )
 
   # Conditionally add titles
@@ -287,7 +308,7 @@ create_weekly_gradient_map = function(disease_data, timing_type = "onset", disea
       ) +
       labs(
         title = paste(str_to_upper(disease_type), str_to_title(timing_type), "Timing Across US States:", season, "Season"),
-        subtitle = paste("Week 0 =", ifelse(timing_type == "onset", "June 1st", "October 1st"),
+        subtitle = paste("Week 0 =", ifelse(timing_type == "onset", "August 1st", "November 1st"),
                          substr(season, 1, 2), "| Darker colors = later", timing_type)
       )
   }
@@ -328,8 +349,8 @@ flu_onset_24_gradient = create_weekly_gradient_map(flu_dat_24, timing_type = "on
 print(flu_onset_24_gradient)
 
 # 4. Peaks gradient
-flu_peaks_24_gradient = create_weekly_gradient_map(flu_dat_24, timing_type = "peak", show_title = FALSE)
-print(flu_peaks_24_gradient)
+flu_peak_24_gradient = create_weekly_gradient_map(flu_dat_24, timing_type = "peak", show_title = FALSE)
+print(flu_peak_24_gradient)
 
 # RSV - 23-24 season
 # # Onset
@@ -369,41 +390,74 @@ print(rsv_peak_24_gradient)
 
 ## For direct comparison, we can put peaks/onsets for flu+rsv in one season on the same figure since they will have the same start point
 
+# All peaks
+(flu_peak_23_gradient + rsv_peak_23_gradient) /
+  (flu_peak_24_gradient + rsv_peak_24_gradient) +
+  plot_layout(guides = "collect") +
+  plot_annotation(tag_levels = list(c("Flu (23-24)", "RSV (23-24)", "Flu (24-25)", "RSV (24-25)")),
+                  title = "Peaks") &
+  theme(plot.tag = element_text(size = 10),
+        legend.position = "bottom",
+        legend.direction = "horizontal",
+        plot.margin = margin(1.5, 1.5, 1.5, 1.5))
+ggsave(file = "figures/manuscript_figures/supplementary/peaks_gradient_all.png", width = 10, height = 6, units = "in", bg = "white")
+
+# All onsets
+(flu_onset_23_gradient + rsv_onset_23_gradient) /
+  (flu_onset_24_gradient + rsv_onset_24_gradient) +
+  plot_layout(guides = "collect") +
+  plot_annotation(tag_levels = list(c("Flu (23-24)", "RSV (23-24)", "Flu (24-25)", "RSV (24-25)")),
+                  title = "Onsets") &
+  theme(plot.tag = element_text(size = 10),
+        legend.position = "bottom",
+        legend.direction = "horizontal",
+        plot.margin = margin(1.5, 1.5, 1.5, 1.5))
+ggsave(file = "figures/manuscript_figures/supplementary/onsets_gradient_all.png", width = 10, height = 6, units = "in", bg = "white")
+
+# Supplementary subfigures
 # Supplementary Figure 11a - 2023-24 season onsets
-flu_onset_23_gradient + rsv_onset_23_gradient +
+onsets_gradient_23 = flu_onset_23_gradient + rsv_onset_23_gradient +
   plot_layout(guides = "collect") +
   plot_annotation(tag_levels = list(c("Flu", "RSV")),
                   title = "23-24 season Onsets") &
   theme(plot.tag = element_text(size = 10),
         legend.position = "bottom",
         legend.direction = "horizontal")
+onsets_gradient_23
+ggsave(file = "figures/manuscript_figures/supplementary/23_24_onsets_gradient.png", width = 10, height = 4, units = "in", bg = "white")
 
-# Supplementary Figure 11b - 2023-24 season peaks
-flu_peak_23_gradient + rsv_peak_23_gradient +
+peak_gradient_23 = flu_peak_23_gradient + rsv_peak_23_gradient +
   plot_layout(guides = "collect") +
   plot_annotation(tag_levels = list(c("Flu", "RSV")),
                   title = "23-24 season Peaks") &
   theme(plot.tag = element_text(size = 10),
         legend.position = "bottom",
         legend.direction = "horizontal")
+peak_gradient_23
+ggsave(file = "figures/manuscript_figures/supplementary/23_24_peaks_gradient.png", width = 10, height = 4, units = "in", bg = "white")
 
 # Supplementary Figure 11c - 2024-25 season onsets
-flu_onset_24_gradient + rsv_onset_24_gradient +
+onset_gradient_24 = flu_onset_24_gradient + rsv_onset_24_gradient +
   plot_layout(guides = "collect") +
   plot_annotation(tag_levels = list(c("Flu", "RSV")),
                   title = "24-25 season Onsets") &
   theme(plot.tag = element_text(size = 10),
         legend.position = "bottom",
         legend.direction = "horizontal")
+onset_gradient_24
+ggsave(file = "figures/manuscript_figures/supplementary/24_25_onsets_gradient.png", width = 10, height = 4, units = "in", bg = "white")
 
 # Supplementary Figure 11b - 2024-25 season peaks
-flu_peak_24_gradient + rsv_peak_24_gradient +
+peak_gradient_24 = flu_peak_24_gradient + rsv_peak_24_gradient +
   plot_layout(guides = "collect") +
   plot_annotation(tag_levels = list(c("Flu", "RSV")),
-                  title = "23-24 season Peaks") &
+                  title = "24-25 season Peaks") &
   theme(plot.tag = element_text(size = 10),
         legend.position = "bottom",
         legend.direction = "horizontal")
+peak_gradient_24
+ggsave(file = "figures/manuscript_figures/supplementary/24_25_peaks_gradient.png", width = 10, height = 4, units = "in", bg = "white")
+
 
 
 
