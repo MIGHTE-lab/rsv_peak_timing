@@ -19,9 +19,11 @@ library(ggh4x)
 library(patchwork)
 
 ## Load NSSP data
-nssp = read_csv(file = "data/processed/nssp_all_years_041525.csv", show_col_types = FALSE)
+nssp = read_csv(file = "data/processed/nssp_all_years_041525.csv",
+                show_col_types = FALSE)
 
-## Test to see if we can regenerate the indivdual season plots from the individual years
+## Test to see if we can regenerate the individual season plots from the
+## individual years
 nssp %>%
   filter(season == "22-23") %>%
   ggplot(aes(x = week_end)) +
@@ -52,14 +54,19 @@ nssp %>%
 ## Load the data from EWS and do some processing
 
 ## Onsets ----
-flu_onsets = read_csv(file = "early_warning/windows_/flu_times_coef_040725.csv", show_col_types = FALSE) %>%
+flu_onsets =
+  read_csv(
+    file = "early_warning/windows_/flu_times_coef_040725.csv",
+    show_col_types = FALSE) %>%
   select(-1)
 
 flu_onsets = flu_onsets %>%
   select(name_proxy, start_date, end_date) %>%
   rename(state = name_proxy, flu_onset = start_date, flu_end = end_date)
 
-rsv_onsets = read_csv(file = "early_warning/windows_/rsv_times_coef_040725.csv", show_col_types = FALSE) %>%
+rsv_onsets = read_csv(
+  file = "early_warning/windows_/rsv_times_coef_040725.csv",
+  show_col_types = FALSE) %>%
   select(-1)
 
 rsv_onsets = rsv_onsets %>%
@@ -99,7 +106,8 @@ match_onsets = function(flu_data, rsv_data) {
   # Create a crossed dataset with all possible flu-rsv onset combinations
   # within the same state and season
   crossed = flu_data %>%
-    inner_join(rsv_data, by = c("state", "season"), relationship = "many-to-many") %>%
+    inner_join(rsv_data, by = c("state", "season"),
+               relationship = "many-to-many") %>%
     # Calculate time difference in days (negative means RSV is before flu)
     mutate(
       time_diff = as.numeric(difftime(flu_onset, rsv_onset, units = "days")),
@@ -134,7 +142,9 @@ write_csv(onsets, file = "data/onsets_042225.csv")
 
 ## Peaks ----
 
-flu_peaks = read_csv(file = "early_warning/peaks_042425/flu_times_coef_041525.csv", show_col_types = FALSE) %>%
+flu_peaks = read_csv(
+  file = "early_warning/peaks_042425/flu_times_coef_041525.csv",
+  show_col_types = FALSE) %>%
   select(-1)
 
 flu_peaks = flu_peaks %>%
@@ -153,9 +163,9 @@ flu_peaks = flu_peaks %>% mutate(
 ) %>%
   select(-c(year, month))
 
-flu_peaks
-
-rsv_peaks = read_csv(file = "early_warning/peaks_042425/rsv_times_coef_041525.csv", show_col_types = FALSE) %>%
+rsv_peaks = read_csv(
+  file = "early_warning/peaks_042425/rsv_times_coef_041525.csv",
+  show_col_types = FALSE) %>%
   select(-1)
 
 rsv_peaks = rsv_peaks %>%
@@ -180,7 +190,8 @@ match_peaks = function(flu_data, rsv_data) {
   # Create a crossed dataset with all possible flu-rsv peak combinations
   # within the same state and season
   crossed = flu_data %>%
-    inner_join(rsv_data, by = c("state", "season"), relationship = "many-to-many") %>%
+    inner_join(rsv_data, by = c("state", "season"),
+               relationship = "many-to-many") %>%
     # Calculate time difference in days (negative means RSV peak is before flu peak)
     mutate(
       time_diff = as.numeric(difftime(flu_peak, rsv_peak, units = "days")),
@@ -206,16 +217,16 @@ match_peaks = function(flu_data, rsv_data) {
 # Apply the function to your datasets
 peaks = match_peaks(flu_peaks, rsv_peaks)
 
-peaks
+# Looks reasonable - we see that some diseases have multiple peaks in seasons.
 
-onsets
-
-# Looks reasonable - we see that some diseases have multiple peaks in seasons. I guess the algorithm could not detect peaks in 22-23 because we started data collection too late in the season
-
-# Calculating the distribution of the differences between onsets and between peaks according to EWS
+# Calculating the distribution of the differences between onsets and between
+# peaks according to EWS
 
 ## Using onsets ----
-onsets = onsets %>% mutate(weeks_diff = ifelse(is.na(rsv_onset), NA, as.numeric(difftime(flu_onset, rsv_onset, units = "weeks"))))
+onsets = onsets %>%
+  mutate(weeks_diff = ifelse(is.na(rsv_onset), NA,
+                             as.numeric(difftime(flu_onset,
+                                                 rsv_onset, units = "weeks"))))
 
 ### As a histogram ----
 onsets %>%
@@ -251,7 +262,6 @@ peaks_shortest %>%
 median(onsets$weeks_diff, na.rm = TRUE)
 mean(onsets$weeks_diff, na.rm = TRUE)
 # 1 week diff in onsets
-
 # Calculate the 95% percentile range
 quantile(onsets$weeks_diff, probs = c(0.025, 0.975), na.rm = TRUE)
 
@@ -277,4 +287,5 @@ plot_onsets_peaks %>%
   geom_boxplot(notch = TRUE) +
   labs(x= "Difference (weeks)", y = "") +
   envalysis::theme_publish()
-ggsave(filename = "figures/fig2_v1.png", width = 10, height = 8, units = "in", bg = "white")
+ggsave(filename = "figures/fig2_v1.png", width = 10,
+       height = 8, units = "in", bg = "white")

@@ -118,12 +118,14 @@ state_to_abbrev = function(state_name) {
 flu_dat_23 %>%
   left_join(rsv_dat_23, by = c("state", "season")) %>%
   select(state, flu_onset, flu_peak, rsv_onset, rsv_peak) %>%
-  mutate(time_diff = as.numeric(difftime(flu_peak, rsv_peak, units = "weeks")))
+  mutate(time_diff =
+           as.numeric(difftime(flu_peak, rsv_peak, units = "weeks")))
 
 flu_dat_24 %>%
   left_join(rsv_dat_24, by = c("state", "season")) %>%
   select(state, flu_onset, flu_peak, rsv_onset, rsv_peak) %>%
-  mutate(time_diff = as.numeric(difftime(flu_peak, rsv_peak, units = "weeks"))) %>%
+  mutate(time_diff =
+           as.numeric(difftime(flu_peak, rsv_peak, units = "weeks"))) %>%
   ggplot(aes(x = time_diff)) +
   geom_boxplot()
 
@@ -155,7 +157,8 @@ create_comparison_plot = function(flu_data,
   flu_col = paste0("flu_", type)
   comparison_col = paste0(comparison_type, "_", type)
   # Get the proper title capitalization
-  type_title = paste0(toupper(substr(type, 1, 1)), substr(type, 2, nchar(type)))
+  type_title = paste0(toupper(substr(type, 1, 1)),
+                      substr(type, 2, nchar(type)))
   comparison_title = toupper(comparison_type)
   # Create the selection expressions
   flu_select_expr = c("state", "season", flu_col)
@@ -189,8 +192,10 @@ create_comparison_plot = function(flu_data,
   # Calculate the ratio of points above the line to points below/on the line
   # Points above the line: flu_date > comparison_date (flu is later)
   # Points on or below the line: flu_date <= comparison_date (flu is earlier or same time)
-  points_above = sum(merged_data$flu_date > merged_data$comparison_date, na.rm = TRUE)
-  points_below_or_on = sum(merged_data$flu_date <= merged_data$comparison_date, na.rm = TRUE)
+  points_above =
+    sum(merged_data$flu_date > merged_data$comparison_date, na.rm = TRUE)
+  points_below_or_on =
+    sum(merged_data$flu_date <= merged_data$comparison_date, na.rm = TRUE)
 
   # Calculate ratio (handle division by zero)
   if (points_below_or_on == 0) {
@@ -270,7 +275,7 @@ create_comparison_plot = function(flu_data,
       # Padding around text
       fill = "white",
       # Background color
-      alpha = 0.8               # Slight transparency
+      alpha = 0.8
     )
 
   return(p)
@@ -411,10 +416,14 @@ result_23_24 = result_23_24 %>%
     },
 
     # Calculate time differences in days
-    flu_rsv_peak_diff = as.numeric(difftime(flu_peak, rsv_peak, units = "days")),
-    flu_covid_peak_diff = as.numeric(difftime(flu_peak, closest_covid_peak, units = "days")),
-    flu_rsv_onset_diff = as.numeric(difftime(flu_onset, rsv_onset, units = "days")),
-    flu_covid_onset_diff = as.numeric(difftime(flu_onset, closest_covid_onset, units = "days")),
+    flu_rsv_peak_diff =
+      as.numeric(difftime(flu_peak, rsv_peak, units = "days")),
+    flu_covid_peak_diff =
+      as.numeric(difftime(flu_peak, closest_covid_peak, units = "days")),
+    flu_rsv_onset_diff =
+      as.numeric(difftime(flu_onset, rsv_onset, units = "days")),
+    flu_covid_onset_diff =
+      as.numeric(difftime(flu_onset, closest_covid_onset, units = "days")),
 
     # Convert to weeks
     flu_rsv_peak_diff_weeks = flu_rsv_peak_diff / 7,
@@ -593,7 +602,8 @@ violin_peaks = plot_data %>% filter(str_detect(comparison, "Peak")) %>%
     legend.position = "none",
   )
 
-violin_peaks_horizontal = plot_data %>% filter(str_detect(comparison, "Peak")) %>%
+violin_peaks_horizontal = plot_data %>%
+  filter(str_detect(comparison, "Peak")) %>%
   ggplot(aes(y = comparison, x = weeks_difference, fill = season)) +
   # Add violins with position dodge to group by season and lighter transparency
   geom_violin(
@@ -646,7 +656,8 @@ violin_peaks_horizontal = plot_data %>% filter(str_detect(comparison, "Peak")) %
     legend.position = "none"
   )
 
-violin_onset_horizontal = plot_data %>% filter(str_detect(comparison, "Onset")) %>%
+violin_onset_horizontal = plot_data %>%
+  filter(str_detect(comparison, "Onset")) %>%
   ggplot(aes(y = comparison, x = weeks_difference, fill = season)) +
   # Add violins with position dodge to group by season and lighter transparency
   geom_violin(
@@ -700,7 +711,8 @@ violin_onset_horizontal = plot_data %>% filter(str_detect(comparison, "Onset")) 
   )
 
 violin_onset_horizontal
-# ggsave(file = "figures/manuscript_figures/ews_diff_violin_plot.png", width = 10, height = 8, units = "in", bg = "white")
+# ggsave(file = "figures/manuscript_figures/ews_diff_violin_plot.png",
+#         width = 10, height = 8, units = "in", bg = "white")
 
 # 5. Getting point statistics from scatterplots
 
@@ -739,21 +751,31 @@ add_subplot_label = function(plot, label, position = c(0.02, 0.98)) {
 }
 
 # Add subplot labels to each plot
-peak_plot_flu_rsv_23_24_labeled = add_subplot_label(peak_plot_flu_rsv_23_24, "A")
-peak_plot_flu_cov_23_24_labeled = add_subplot_label(peak_plot_flu_cov_23_24, "B")
-peak_plot_flu_rsv_24_25_labeled = add_subplot_label(peak_plot_flu_rsv_24_25, "C")
-peak_plot_flu_cov_24_25_labeled = add_subplot_label(peak_plot_flu_cov_24_25, "D")
+peak_plot_flu_rsv_23_24_labeled =
+  add_subplot_label(peak_plot_flu_rsv_23_24, "A")
+peak_plot_flu_cov_23_24_labeled =
+  add_subplot_label(peak_plot_flu_cov_23_24, "B")
+peak_plot_flu_rsv_24_25_labeled =
+  add_subplot_label(peak_plot_flu_rsv_24_25, "C")
+peak_plot_flu_cov_24_25_labeled =
+  add_subplot_label(peak_plot_flu_cov_24_25, "D")
 
 # Do the same for onsets
-onset_plot_flu_rsv_23_24_labeled = add_subplot_label(onset_plot_flu_rsv_23_24, "A")
-onset_plot_flu_cov_23_24_labeled = add_subplot_label(onset_plot_flu_cov_23_24, "B")
-onset_plot_flu_rsv_24_25_labeled = add_subplot_label(onset_plot_flu_rsv_24_25, "C")
-onset_plot_flu_cov_24_25_labeled = add_subplot_label(onset_plot_flu_cov_24_25, "D")
+onset_plot_flu_rsv_23_24_labeled =
+  add_subplot_label(onset_plot_flu_rsv_23_24, "A")
+onset_plot_flu_cov_23_24_labeled =
+  add_subplot_label(onset_plot_flu_cov_23_24, "B")
+onset_plot_flu_rsv_24_25_labeled =
+  add_subplot_label(onset_plot_flu_rsv_24_25, "C")
+onset_plot_flu_cov_24_25_labeled =
+  add_subplot_label(onset_plot_flu_cov_24_25, "D")
 
 # For the violin plot, position the label further to the left to avoid y-axis overlap
-violin_labeled = add_subplot_label(violin_peaks_horizontal, "E", position = c(-0.08, 0.98))
+violin_labeled =
+  add_subplot_label(violin_peaks_horizontal, "E", position = c(-0.08, 0.98))
 
-violin_onset_labeled = add_subplot_label(violin_onset_horizontal, "E", position = c(-0.08, 0.98))
+violin_onset_labeled =
+  add_subplot_label(violin_onset_horizontal, "E", position = c(-0.08, 0.98))
 
 # Set consistent dimensions for the scatterplots with reduced margins
 set_plot_dimensions = function(plot) {
@@ -765,16 +787,24 @@ set_plot_dimensions = function(plot) {
 }
 
 # Apply consistent dimensions to all plots
-peak_plot_flu_rsv_23_24_labeled = set_plot_dimensions(peak_plot_flu_rsv_23_24_labeled)
-peak_plot_flu_cov_23_24_labeled = set_plot_dimensions(peak_plot_flu_cov_23_24_labeled)
-peak_plot_flu_rsv_24_25_labeled = set_plot_dimensions(peak_plot_flu_rsv_24_25_labeled)
-peak_plot_flu_cov_24_25_labeled = set_plot_dimensions(peak_plot_flu_cov_24_25_labeled)
+peak_plot_flu_rsv_23_24_labeled =
+  set_plot_dimensions(peak_plot_flu_rsv_23_24_labeled)
+peak_plot_flu_cov_23_24_labeled =
+  set_plot_dimensions(peak_plot_flu_cov_23_24_labeled)
+peak_plot_flu_rsv_24_25_labeled =
+  set_plot_dimensions(peak_plot_flu_rsv_24_25_labeled)
+peak_plot_flu_cov_24_25_labeled =
+  set_plot_dimensions(peak_plot_flu_cov_24_25_labeled)
 
 # Apply consistent dimensions to all plots
-onset_plot_flu_cov_23_24_labeled = set_plot_dimensions(onset_plot_flu_cov_23_24_labeled)
-onset_plot_flu_rsv_23_24_labeled = set_plot_dimensions(onset_plot_flu_rsv_23_24_labeled)
-onset_plot_flu_rsv_24_25_labeled = set_plot_dimensions(onset_plot_flu_rsv_24_25_labeled)
-onset_plot_flu_cov_24_25_labeled = set_plot_dimensions(onset_plot_flu_cov_24_25_labeled)
+onset_plot_flu_cov_23_24_labeled =
+  set_plot_dimensions(onset_plot_flu_cov_23_24_labeled)
+onset_plot_flu_rsv_23_24_labeled =
+  set_plot_dimensions(onset_plot_flu_rsv_23_24_labeled)
+onset_plot_flu_rsv_24_25_labeled =
+  set_plot_dimensions(onset_plot_flu_rsv_24_25_labeled)
+onset_plot_flu_cov_24_25_labeled =
+  set_plot_dimensions(onset_plot_flu_cov_24_25_labeled)
 
 
 # For the violin plot, adjust margins without enforcing aspect ratio
@@ -807,7 +837,7 @@ combined_peak_plot = (
 ) / (
   # Third row with centered violin plot
   empty_plot + violin_labeled_sq + empty_plot +
-    plot_layout(widths = c(0.25, 0.5, 0.25))  # 25% padding on each side, 50% for the plot
+    plot_layout(widths = c(0.25, 0.5, 0.25))
 ) +
   # Overall layout settings
   plot_layout(
@@ -836,7 +866,7 @@ combined_onset_plot = (
 ) / (
   # Third row with centered violin plot
   empty_plot + violin_labeled_onset_sq + empty_plot +
-    plot_layout(widths = c(0.25, 0.5, 0.25))  # 25% padding on each side, 50% for the plot
+    plot_layout(widths = c(0.25, 0.5, 0.25))
 ) +
   # Overall layout settings
   plot_layout(
@@ -862,6 +892,14 @@ median_boot = function(data, indices) {
   return(median(data[indices], na.rm = TRUE))
 }
 
+plot_data %>%
+  filter(comparison == "Flu-RSV Peak") %>%
+  group_by(comparison) %>%
+  summarize(min = min(weeks_difference, na.rm = TRUE),
+            max = max(weeks_difference, na.rm = TRUE),
+            median = median(weeks_difference, na.rm = TRUE),
+            mean = mean(weeks_difference, na.rm = TRUE))
+
 # Expanded summary function with 95% CI for median
 onset_peak_stats = plot_data %>%
   group_by(season, comparison) %>%
@@ -875,10 +913,13 @@ onset_peak_stats = plot_data %>%
     ci_upper = map_dbl(boot_obj, ~ quantile(.$t, probs = 0.975)),
     # Calculate the 2.5th and 97.5th percentiles directly (alternate method)
     pct_2.5 = quantile(weeks_difference, probs = 0.025, na.rm = TRUE),
-    pct_97.5 = quantile(weeks_difference, probs = 0.975, na.rm = TRUE)
+    pct_97.5 = quantile(weeks_difference, probs = 0.975, na.rm = TRUE),
+    # Also include the min and max values to calculate the range
+    min = min(weeks_difference, na.rm = TRUE),
+    max = max(weeks_difference, na.rm = TRUE)
   ) %>%
   # Clean up by removing the boot object column
   select(-boot_obj)
-onset_peak_stats
 
+# Save the results
 write_csv(onset_peak_stats, file = "data/onset_peak_stats.csv")

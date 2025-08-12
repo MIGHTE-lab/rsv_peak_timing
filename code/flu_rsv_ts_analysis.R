@@ -9,9 +9,9 @@
 ##
 ## Last Updated: 2025-04-14
 ##
-## Version: 1.3
-## Update stacked regression to use gridsearch for lambdas
+## Version: 1.3.1
 ##
+## Update notes: Clean up code for manuscript submission
 ## -----------------------------------------------------------------------------
 
 ## 1. Load packages and data ---------------------------------------------------

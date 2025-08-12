@@ -61,8 +61,8 @@ create_onset_comparison_plot = function(flu_data, rsv_data, season) {
       row_num = row_number(),
       label = if_else(
         count > 1,
-        paste0(state_abbrev, "_", row_num),  # For duplicates, add underscore and number
-        state_abbrev                          # For unique entries, just use abbreviation
+        paste0(state_abbrev, "_", row_num),
+        state_abbrev
       )
     ) %>%
     ungroup()
@@ -80,11 +80,11 @@ create_onset_comparison_plot = function(flu_data, rsv_data, season) {
       box.padding = 0.5,
       point.padding = 0.3,
       segment.color = "gray50",
-      max.overlaps = 30,             # Increase max overlaps
-      force = 10,                     # Increase repelling force
-      force_pull = 0.5,               # Reduce attraction to points
-      min.segment.length = 0.1,       # Allow shorter segments
-      direction = "both",             # Allow labels in any direction
+      max.overlaps = 30,
+      force = 10,
+      force_pull = 0.5,
+      min.segment.length = 0.1,
+      direction = "both",
       seed = 42                       # Set seed for reproducibility
     ) +
     # Add scale breaks and formatting
@@ -92,13 +92,14 @@ create_onset_comparison_plot = function(flu_data, rsv_data, season) {
     scale_y_date(date_breaks = "2 week", date_labels = "%b %d") +
     # Add labels and title
     labs(
-      title = paste0("Comparison of RSV and Flu Onset Dates (",season," season)"),
-      subtitle = "Points above the dashed line indicate RSV onset occurred before flu onset",
+      title =
+        paste0("Comparison of RSV and Flu Onset Dates (",season," season)"),
+      subtitle =
+        "Points above the dashed line indicate RSV onset occurred before flu onset",
       x = "RSV Onset Date",
       y = "Flu Onset Date",
       color = "State"
     ) +
-    # Use a clean theme
     theme_minimal() +
     theme(
       axis.text.x = element_text(angle = 45, hjust = 1),
@@ -106,10 +107,6 @@ create_onset_comparison_plot = function(flu_data, rsv_data, season) {
       panel.grid.minor = element_blank()
     )
 
-
   return(p)
 }
-
-# Onsets
-## Mean
 

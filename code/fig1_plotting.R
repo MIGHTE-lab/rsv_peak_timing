@@ -35,11 +35,15 @@ compute_state_correlations = function(season_data, chosen_season) {
   cor_matrix = season_data %>%
     filter(season == chosen_season) %>%
     rename(rsv_lag0 = rsv_rescaled) %>%
-    select(state, flu_rescaled, rsv_lag0, rsv_lag1:rsv_lag5) %>%  # Select necessary columns
+    select(state, flu_rescaled, rsv_lag0, rsv_lag1:rsv_lag5) %>%
+    # Select necessary columns
     group_by(state) %>%
     summarise(across(rsv_lag0:rsv_lag5,
-                     ~cor(flu_rescaled, ., use = "pairwise.complete.obs"))) %>%  # Compute correlations with flu_rescaled
-    pivot_longer(cols = rsv_lag0:rsv_lag5, names_to = "RSV_Variable", values_to = "Correlation")
+                     ~cor(flu_rescaled, ., use = "pairwise.complete.obs"))) %>%
+    # Compute correlations with flu_rescaled
+    pivot_longer(cols = rsv_lag0:rsv_lag5,
+                 names_to = "RSV_Variable",
+                 values_to = "Correlation")
 
   return(cor_matrix)
 }
@@ -65,7 +69,12 @@ cor_22_23 = bind_rows(cor_mat_MD_22_23, cor_mat_TX_22_23, cor_mat_NY_22_23)
 cor_22_23 = cor_22_23 %>%
   mutate(
     state = factor(state, levels = c("Texas", "New York", "Maryland")),
-    RSV_Variable = factor(RSV_Variable, levels = c("rsv_lag5", "rsv_lag4", "rsv_lag3", "rsv_lag2", "rsv_lag1", "rsv_lag0"))
+    RSV_Variable = factor(RSV_Variable, levels = c("rsv_lag5",
+                                                   "rsv_lag4",
+                                                   "rsv_lag3",
+                                                   "rsv_lag2",
+                                                   "rsv_lag1",
+                                                   "rsv_lag0"))
   )
 
 # Create the heatmap
@@ -73,7 +82,8 @@ h1 = ggplot(cor_22_23, aes(x = RSV_Variable, y = state, fill = Correlation)) +
   geom_tile() +
   geom_text(aes(label = round(Correlation, 3)), color = "black", size = 3.5) +
   scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0) +
-  scale_x_discrete(labels =c ("Lag 5", "Lag 4", "Lag 3", "Lag 2", "Lag 1", "Lag 0")) +
+  scale_x_discrete(labels = c("Lag 5", "Lag 4", "Lag 3",
+                              "Lag 2", "Lag 1", "Lag 0")) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1),
         legend.position = "none",
@@ -85,7 +95,9 @@ cor_23_24 = bind_rows(cor_mat_MD_23_24, cor_mat_TX_23_24, cor_mat_NY_23_24)
 cor_23_24 = cor_23_24 %>%
   mutate(
     state = factor(state, levels = c("Texas", "New York", "Maryland")),
-    RSV_Variable = factor(RSV_Variable, levels = c("rsv_lag5", "rsv_lag4", "rsv_lag3", "rsv_lag2", "rsv_lag1", "rsv_lag0"))
+    RSV_Variable = factor(RSV_Variable, levels = c("rsv_lag5", "rsv_lag4",
+                                                   "rsv_lag3", "rsv_lag2",
+                                                   "rsv_lag1", "rsv_lag0"))
   )
 
 # Create the heatmap
@@ -105,7 +117,9 @@ cor_24_25 = bind_rows(cor_mat_MD_24_25, cor_mat_TX_24_25, cor_mat_NY_24_25)
 cor_24_25 = cor_24_25 %>%
   mutate(
     state = factor(state, levels = c("Texas", "New York", "Maryland")),
-    RSV_Variable = factor(RSV_Variable, levels = c("rsv_lag5", "rsv_lag4", "rsv_lag3", "rsv_lag2", "rsv_lag1", "rsv_lag0"))
+    RSV_Variable = factor(RSV_Variable, levels = c("rsv_lag5", "rsv_lag4",
+                                                   "rsv_lag3", "rsv_lag2",
+                                                   "rsv_lag1", "rsv_lag0"))
   )
 
 # Create the heatmap
@@ -113,7 +127,8 @@ h3 = ggplot(cor_24_25, aes(x = RSV_Variable, y = state, fill = Correlation)) +
   geom_tile() +
   geom_text(aes(label = round(Correlation, 3)), color = "black", size = 3.5) +
   scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0) +
-  scale_x_discrete(labels =c ("Lag 5", "Lag 4", "Lag 3", "Lag 2", "Lag 1", "Lag 0")) +
+  scale_x_discrete(labels =c ("Lag 5", "Lag 4", "Lag 3",
+                              "Lag 2", "Lag 1", "Lag 0")) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1),
         legend.position = "none",
@@ -148,12 +163,9 @@ p1 = nssp_all_years %>%
     legend.title = element_blank(),
     legend.position = 'right'
   )
-
 p1
-ggsave("figures/manuscript_figures/fig1/fig1_timeseries.png", width = 8, height = 9, units = "in", bg = "white")
-
-p1 / (h1 + h2 + h3) + plot_layout(heights = c(0.8, 0.2))
-# ggsave("figures/manuscript_figures/fig1/fig2_040825.png", width = 12, height = 12, units = "in", bg = "white")
+ggsave("figures/manuscript_figures/fig1/fig1_timeseries.png", width = 8,
+       height = 9, units = "in", bg = "white")
 
 ## Making individual subfigures for presentation ----
 
@@ -188,7 +200,7 @@ nssp_all_years %>%
 
 ## MA
 nssp_all_years %>%
-  filter(state %in% c("Massachusetts"), season == ) %>%
+  filter(state %in% c("Massachusetts")) %>%
   ggplot(aes(x = week_end)) +
   geom_line(aes(y = flu_times_coef, color = 'Flu'), linewidth = 0.85) +
   geom_line(aes(y = rsv_times_coef, color = 'RSV'), linewidth = 0.85) +
