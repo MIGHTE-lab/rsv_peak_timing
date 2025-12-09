@@ -215,7 +215,7 @@ nssp_signals_22_23 %>%
     legend.position = 'right',
     strip.text = element_text(size = 9)
   )
-ggsave(file = "figures/nssp_22_23_060525.png", width = 16, height = 10, units = "in", bg = "white")
+# ggsave(file = "figures/nssp_22_23_060525.png", width = 16, height = 10, units = "in", bg = "white")
 
 # 23-24 season
 nssp_signals_23_24 = NULL
@@ -272,7 +272,7 @@ nssp_signals_23_24 %>%
     legend.position = 'right',
     strip.text = element_text(size = 9)
   )
-ggsave(file = "figures/nssp_23_24_060525.png", width = 16, height = 10, units = "in", bg = "white")
+# ggsave(file = "figures/nssp_23_24_060525.png", width = 16, height = 10, units = "in", bg = "white")
 
 # 24-25 season
 nssp_signals_24_25 = NULL
@@ -330,7 +330,7 @@ nssp_signals_24_25 %>%
     legend.position = 'right',
     strip.text = element_text(size = 9)
   )
-ggsave(file = "figures/nssp_24_25_060525.png", width = 16, height = 10, units = "in", bg = "white")
+# ggsave(file = "figures/nssp_24_25_060525.png", width = 16, height = 10, units = "in", bg = "white")
 
 # 4. Generate Figure 1 (3x3 state-season example figure) ----
 
@@ -352,7 +352,7 @@ nssp_all_years %>%
     'Flu' = '#C34129',
     'COVID-19' = "#EFB75B"
   )) +
-  labs(x = '', y = '') +
+  labs(x = '', y = 'Rescaled Volume / Contribution') +
   scale_x_date(date_labels = "%b\n%y", date_breaks = "2 months") +
   envalysis::theme_publish() +
   theme(
@@ -363,7 +363,7 @@ nssp_all_years %>%
     legend.title = element_blank(),
     legend.position = 'bottom'
   )
-ggsave(file = "figures/3x3_MD_NY_TX_060525.png", height = 8, width = 8, units = "in", bg = "white")
+ggsave(file = "figures/3x3_MD_NY_TX_100325.png", height = 8, width = 8, units = "in", bg = "white")
 
 # 5. Determining temporal order from ridge model results ----
 ## Create helper functions
@@ -437,8 +437,46 @@ nssp_signals_22_23 %>%
     .groups = "drop"
   ) %>%
   filter(max_rsv_date == max_flu_date) %>%
-  select(state, max_rsv_date, max_flu_date) %>%
-  nrow()
+  select(state, max_rsv_date, max_flu_date)
+
+## Creating a table showing the peak timings for each season
+nssp_peaks_22_23 = nssp_signals_22_23 %>%
+  group_by(state) %>%
+  summarize(
+    max_rsv_date = week_end[which.max(rsv_rescaled)],
+    max_flu_date = week_end[which.max(flu_rescaled)],
+    max_cov_date = week_end[which.max(covid_rescaled)],
+    max_ili_date = week_end[which.max(ili_rescaled)],
+    .groups = "drop"
+  ) %>%
+  mutate(season = "22-23")
+
+nssp_peaks_23_24 = nssp_signals_23_24 %>%
+  group_by(state) %>%
+  summarize(
+    max_rsv_date = week_end[which.max(rsv_rescaled)],
+    max_flu_date = week_end[which.max(flu_rescaled)],
+    max_cov_date = week_end[which.max(covid_rescaled)],
+    max_ili_date = week_end[which.max(ili_rescaled)],
+    .groups = "drop"
+  ) %>%
+  mutate(season = "23-24")
+
+nssp_peaks_24_25 = nssp_signals_24_25 %>%
+  group_by(state) %>%
+  summarize(
+    max_rsv_date = week_end[which.max(rsv_rescaled)],
+    max_flu_date = week_end[which.max(flu_rescaled)],
+    max_cov_date = week_end[which.max(covid_rescaled)],
+    max_ili_date = week_end[which.max(ili_rescaled)],
+    .groups = "drop"
+  ) %>%
+  mutate(season = "24-25")
+
+nssp_peaks = bind_rows(nssp_peaks_22_23, nssp_peaks_23_24, nssp_peaks_24_25)
+
+write_csv(nssp_peaks, file = "data/nssp_peaks.csv")
+
 
 # Getting the month ranges for the peak values of RSV and influenza
 nssp_signals_22_23 %>%

@@ -16,8 +16,8 @@ library(tidyverse)
 library(lubridate)
 
 # Load data
-flu_dat = read_csv('early_warning/flu_matched_peaks_onsets.csv')
-rsv_dat = read_csv('early_warning/rsv_matched_peaks_onsets.csv')
+flu_dat = read_csv('data/early_warning/flu_matched_peaks_onsets.csv')
+rsv_dat = read_csv('data/early_warning/rsv_matched_peaks_onsets.csv')
 
 # Some data wrangling
 state_to_abbrev = function(state_name) {
