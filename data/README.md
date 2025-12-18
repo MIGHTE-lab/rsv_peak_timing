@@ -1,6 +1,6 @@
 # Data Directory
 
-This directory should contain the raw and processed data files used in the analysis. **Data files are not included in this repository** due to size and data use agreements.
+This directory should contain the raw and processed data files used in the analysis. Only the initial NSSP and ILI datasets are included.
 
 ## Required Directory Structure
 
