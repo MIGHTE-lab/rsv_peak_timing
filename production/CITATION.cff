@@ -1,0 +1,59 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "Post-Pandemic Timing of Influenza, RSV, and COVID-19 in the United States - Analysis Code"
+version: 1.0.0
+date-released: 2025-12-18
+abstract: "Analysis code for characterizing the temporal relationships between RSV, influenza, and COVID-19 epidemics in the post-pandemic United States (2022-2025) using ridge regression models and anomaly detection algorithms."
+repository-code: "https://github.com/MIGHTE-lab/rsv_peak_timing"
+license: MIT
+keywords:
+  - disease surveillance
+  - RSV
+  - influenza
+  - influenza-like illness
+  - forecasting
+  - pandemic preparedness
+  - time series analysis
+  - ridge regression
+  - epidemic timing
+
+authors:
+  - family-names: "Dewey"
+    given-names: "George"
+    orcid: "https://orcid.org/0000-0000-0000-0000"
+    affiliation: "Machine Intelligence Group for the betterment of Health and the Environment, Northeastern University; Network Science Institute, Northeastern University"
+    email: "g.dewey@northeastern.edu"
+    
+  - family-names: "Meyer"
+    given-names: "Austin G."
+    affiliation: "Machine Intelligence Group for the betterment of Health and the Environment, Northeastern University; Network Science Institute, Northeastern University; Baylor Scott and White Health"
+    email: "austin.g.meyer@gmail.com"
+    
+  - family-names: "Garcia"
+    given-names: "Raul Garrido"
+    affiliation: "Machine Intelligence Group for the betterment of Health and the Environment, Northeastern University; Network Science Institute, Northeastern University; Department of Physics, Northeastern University"
+    email: "garridogarcia.r@northeastern.edu"
+    
+  - family-names: "Santillana"
+    given-names: "Mauricio"
+    orcid: "https://orcid.org/0000-0002-6710-3350"
+    affiliation: "Machine Intelligence Group for the betterment of Health and the Environment, Northeastern University; Network Science Institute, Northeastern University; Department of Epidemiology, Harvard T.H. Chan School of Public Health"
+    email: "m.santill@g.harvard.edu"
+
+preferred-citation:
+  type: article
+  title: "Uncovering the Post-Pandemic Timing of Influenza, RSV, and COVID-19 Driving Seasonal Influenza-like Illness in the United States: A Retrospective Ecological Study"
+  authors:
+    - family-names: "Dewey"
+      given-names: "George"
+    - family-names: "Meyer"
+      given-names: "Austin G."
+    - family-names: "Garcia"
+      given-names: "Raul Garrido"
+    - family-names: "Santillana"
+      given-names: "Mauricio"
+  journal: "[Journal Name - To Be Updated]"
+  year: 2025
+  status: "submitted"
+  # doi: "10.xxxx/xxxxx"  # To be added upon publication
