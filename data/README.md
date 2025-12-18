@@ -1,6 +1,6 @@
 # Data Directory
 
-This directory should contain the raw and processed data files used in the analysis. Only the initial NSSP and ILI datasets are included.
+This directory should contain the raw and processed data files used in the analysis. Only a sample of the initial NSSP dataset is included. Instructions to obtain the other data sources are listed below.
 
 ## Required Directory Structure
 
