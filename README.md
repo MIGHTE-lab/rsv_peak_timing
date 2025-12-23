@@ -185,9 +185,13 @@ For questions or issues, please contact:
 
 Or open an issue on this repository.
 
+## Funding
+
+GD, RG, and MS were supported by cooperative agreement CDC-RFA-FT-23-0069 from the CDCs Center for Forecasting and Outbreak Analytics. AM was supported by the National Institutes of Health LRP #1L70AI194328-01. The study contents are solely the responsibility of the authors and do not necessarily represent the official views of the Centers for Disease Control and Prevention.
+
 ## Acknowledgments
 
-We thank Marc Lipsitch for helpful comments. This work was supported by [funding sources]. The study contents are solely the responsibility of the authors and do not necessarily represent the official views of the Centers for Disease Control and Prevention.
+We thank Marc Lipsitch for helpful comments. 
 
 ## Repository Status
 
