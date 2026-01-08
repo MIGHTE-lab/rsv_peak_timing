@@ -1,6 +1,6 @@
 # Post-Pandemic Timing of Influenza, RSV, and COVID-19 in the United States
 
-[![DOI](https://img.shields.io/badge/DOI-blue)](https://doi.org/10.1016/j.lana.2025.101359)
+[![DOI: doi.org/10.1016/j.lana.2025.101359](https://img.shields.io/badge/DOI-blue)](https://doi.org/10.1016/j.lana.2025.101359)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 This repository contains the code and analysis pipeline for the manuscript:
@@ -170,7 +170,7 @@ If you use this code or data in your research, please cite:
 Dewey G, Meyer AG, Garcia RG, Santillana M. Uncovering the Post-Pandemic 
 Timing of Influenza, RSV, and COVID-19 Driving Seasonal Influenza-like 
 Illness in the United States: A Retrospective Ecological Study. 
-[Journal Name]. [Year];[Volume]:[Pages]. DOI: [pending]
+[Lancet Regional Health Americas]. [2026];[55,101359]. DOI: 10.1016/j.lana.2025.101359
 ```
 
 ## License
