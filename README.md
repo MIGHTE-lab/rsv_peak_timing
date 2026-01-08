@@ -1,6 +1,6 @@
 # Post-Pandemic Timing of Influenza, RSV, and COVID-19 in the United States
 
-[![DOI](https://img.shields.io/badge/DOI-pending-blue)]()
+[![DOI](https://img.shields.io/badge/DOI-blue)](https://doi.org/10.1016/j.lana.2025.101359)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 This repository contains the code and analysis pipeline for the manuscript:
@@ -181,7 +181,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 For questions or issues, please contact:
 - George Dewey: g.dewey@northeastern.edu
-- Mauricio Santillana: m.santill@g.harvard.edu
+- Mauricio Santillana: m.santillana@northeastern.edu
 
 Or open an issue on this repository.
 
